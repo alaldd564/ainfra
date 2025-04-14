@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "1051908844794",
+    "firebase_url": "https://t111-5d2a9-default-rtdb.firebaseio.com",
+    "project_id": "t111-5d2a9",
+    "storage_bucket": "t111-5d2a9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1051908844794:android:52d02895e0351e26f42d43",
+        "android_client_info": {
+          "package_name": "com.example.ainfra"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBKL_9h3HjOa0KmcjqzYaVlTlSuGja8JfE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
