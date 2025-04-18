@@ -1,8 +1,11 @@
 # Miscellaneous
 *.class
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
+=======
+>>>>>>> 89876c2 (Initial commit)
 *.lock
 >>>>>>> 52d7786 (first commit)
 *.log
@@ -23,10 +26,19 @@ migrate_working_dir/
 *.iws
 .idea/
 
+<<<<<<< HEAD
 # VS Code (옵션)
 #.vscode/
 
 # Flutter/Dart/Pub related
+=======
+# VSCode 관련
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+>>>>>>> 89876c2 (Initial commit)
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
@@ -36,12 +48,24 @@ migrate_working_dir/
 .packages.generated
 .pub-preload-cache/
 build/
+<<<<<<< HEAD
 **/doc/api/
 **/ios/Flutter/.last_build_id
 **/generated_plugin_registrant.dart
+=======
+**/generated_plugin_registrant.dart
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+>>>>>>> 89876c2 (Initial commit)
 
 # Android related
-**/android/**/gradle-wrapper.jar
+/android/app/debug
+/android/app/profile
+/android/app/release
 .gradle/
 **/android/captures/
 **/android/gradlew
@@ -105,6 +129,7 @@ build/
 # Coverage
 coverage/
 
+<<<<<<< HEAD
 # Symbolication related
 app.*.symbols
 
@@ -112,12 +137,16 @@ app.*.symbols
 app.*.map.json
 
 # 예외 처리
+=======
+# 예외 처리 (Ignore 안 하도록 허용하는 항목들)
+>>>>>>> 89876c2 (Initial commit)
 !**/ios/**/default.mode1v3
 !**/ios/**/default.mode2v3
 !**/ios/**/default.pbxuser
 !**/ios/**/default.perspectivev3
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 !/dev/ci/**/Gemfile.lock
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 =======
@@ -166,3 +195,5 @@ app.*.map.json
 /android/app/release
 >>>>>>> 008cf8d (first commit)
 >>>>>>> 52d7786 (first commit)
+=======
+>>>>>>> 89876c2 (Initial commit)
