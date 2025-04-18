@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # Flutter/Dart 관련
 .dart_tool/
 .packages
@@ -58,3 +58,17 @@ key.properties
 **/*.keystore
 **/*.jks
 >>>>>>> 52d7786 (first commit)
+gradle-wrapper.jar
+/.gradle
+/captures/
+/gradlew
+/gradlew.bat
+/local.properties
+GeneratedPluginRegistrant.java
+.cxx/
+
+# Remember to never publicly share your keystore.
+# See https://flutter.dev/to/reference-keystore
+key.properties
+**/*.keystore
+**/*.jks
