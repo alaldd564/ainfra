@@ -4,7 +4,7 @@ import 'firebase_options.dart';
 
 // 🔥 로그인, 회원가입 화면 import
 import 'screens/login_screen.dart';
-import 'screens/signup_screen.dart'; // 이것도 필요해!
+import 'screens/signup_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
