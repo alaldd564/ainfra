@@ -10,22 +10,26 @@ class AuthService {
     await _firebaseAuth.signInWithEmailAndPassword(
       email: email,
       password: password,
-    );
+    ).then((_) {
+      // 로그인 성공 시 별도 처리 없음 (return 무시)
+    }).catchError((e) {
+      throw e;
+    });
   }
 
   // 회원가입 (role 추가됨)
   Future<void> signUp(String email, String password, String role) async {
-    // 1. Firebase Authentication에 계정 생성
-    UserCredential userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
+    await _firebaseAuth.createUserWithEmailAndPassword(
       email: email,
       password: password,
-    );
-
-    // 2. Firestore에 사용자 정보 저장
-    await _firestore.collection('users').doc(userCredential.user!.uid).set({
-      'email': email,
-      'role': role, // 역할 저장
-      'createdAt': FieldValue.serverTimestamp(),
+    ).then((userCredential) async {
+      await _firestore.collection('users').doc(userCredential.user!.uid).set({
+        'email': email,
+        'role': role, // 역할 저장
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }).catchError((e) {
+      throw e;
     });
   }
 
