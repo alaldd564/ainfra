@@ -4,8 +4,10 @@ build/
 .dart_tool/
 .packages
 
+
 # Android APK outputs
-*.apk
+.apk
+.aab
 
 # iOS build artifacts
 ios/Flutter/App.framework
