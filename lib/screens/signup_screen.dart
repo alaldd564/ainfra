@@ -14,7 +14,6 @@ class _SignupScreenState extends State<SignupScreen> {
   final AuthService _authService = AuthService();
 
   String _selectedRole = '시각장애인'; // 기본값
-
   final List<String> _roles = ['시각장애인', '보호자', '택시기사'];
 
   Future<void> _signUp() async {
@@ -22,13 +21,16 @@ class _SignupScreenState extends State<SignupScreen> {
       await _authService.signUp(
         emailController.text.trim(),
         passwordController.text.trim(),
-        _selectedRole, // 선택한 역할도 함께 넘기기
+        _selectedRole,
       );
+
+      if (!mounted) return; // ⛑ context 사용 전 mounted 체크
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('회원가입 성공')),
       );
       Navigator.pop(context);
     } catch (e) {
+      if (!mounted) return; // ⛑ context 사용 전 mounted 체크
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('회원가입 실패: $e')),
       );

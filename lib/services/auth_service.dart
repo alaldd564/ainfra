@@ -1,9 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // 🔥 추가
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart'; // debugPrint 사용
 
 class AuthService {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance; // 🔥 추가
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // 로그인
   Future<void> signIn(String email, String password) async {
@@ -13,33 +14,31 @@ class AuthService {
         password: password,
       );
     } catch (e) {
-      print('❌ 로그인 실패: $e');
-      throw e;
+      debugPrint('❌ 로그인 실패: $e');
+      rethrow; // ✅ rethrow로 변경
     }
   }
 
-  // 회원가입 (role 추가됨)
+  // 회원가입 (role 포함)
   Future<void> signUp(String email, String password, String role) async {
     try {
-      // 1. 계정 생성
       UserCredential userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      print('✅ Firebase Auth 계정 생성 완료');
+      debugPrint('✅ Firebase Auth 계정 생성 완료');
 
-      // 2. Firestore 저장
       await _firestore.collection('users').doc(userCredential.user!.uid).set({
         'email': email,
-        'role': role, // 역할 저장
+        'role': role,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      print('✅ Firestore 저장 성공');
+      debugPrint('✅ Firestore 저장 성공');
     } catch (e) {
-      print('❌ 회원가입 중 오류 발생: $e');
-      throw e;
+      debugPrint('❌ 회원가입 중 오류 발생: $e');
+      rethrow; // ✅ rethrow로 변경
     }
   }
 
@@ -48,7 +47,7 @@ class AuthService {
     await _firebaseAuth.signOut();
   }
 
-  // 로그인 후 role 가져오기
+  // role 가져오기
   Future<String?> getUserRole(String uid) async {
     try {
       DocumentSnapshot userDoc = await _firestore.collection('users').doc(uid).get();
@@ -58,7 +57,7 @@ class AuthService {
         return null;
       }
     } catch (e) {
-      print('역할(role) 가져오기 실패: $e');
+      debugPrint('역할(role) 가져오기 실패: $e');
       return null;
     }
   }

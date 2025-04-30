@@ -1,0 +1,66 @@
+[
+    {
+        "merged": "dev.note11.flutter_naver_map.flutter_naver_map-release-35:/color/abc_primary_text_disable_only_material_dark.xml",
+        "source": "dev.note11.flutter_naver_map.flutter_naver_map-appcompat-1.7.0-23:/color/abc_primary_text_disable_only_material_dark.xml"
+    },
+    {
+        "merged": "dev.note11.flutter_naver_map.flutter_naver_map-release-35:/color/switch_thumb_material_dark.xml",
+        "source": "dev.note11.flutter_naver_map.flutter_naver_map-appcompat-1.7.0-23:/color/switch_thumb_material_dark.xml"
+    },
+    {
+        "merged": "dev.note11.flutter_naver_map.flutter_naver_map-release-35:/color/switch_thumb_material_light.xml",
+        "source": "dev.note11.flutter_naver_map.flutter_naver_map-appcompat-1.7.0-23:/color/switch_thumb_material_light.xml"
+    },
+    {
+        "merged": "dev.note11.flutter_naver_map.flutter_naver_map-release-35:/color/abc_hint_foreground_material_light.xml",
+        "source": "dev.note11.flutter_naver_map.flutter_naver_map-appcompat-1.7.0-23:/color/abc_hint_foreground_material_light.xml"
+    },
+    {
+        "merged": "dev.note11.flutter_naver_map.flutter_naver_map-release-35:/color/abc_background_cache_hint_selector_material_dark.xml",
+        "source": "dev.note11.flutter_naver_map.flutter_naver_map-appcompat-1.7.0-23:/color/abc_background_cache_hint_selector_material_dark.xml"
+    },
+    {
+        "merged": "dev.note11.flutter_naver_map.flutter_naver_map-release-35:/color/common_google_signin_btn_text_light.xml",
+        "source": "dev.note11.flutter_naver_map.flutter_naver_map-jetified-play-services-base-18.1.0-29:/color/common_google_signin_btn_text_light.xml"
+    },
+    {
+        "merged": "dev.note11.flutter_naver_map.flutter_naver_map-release-35:/color/abc_hint_foreground_material_dark.xml",
+        "source": "dev.note11.flutter_naver_map.flutter_naver_map-appcompat-1.7.0-23:/color/abc_hint_foreground_material_dark.xml"
+    },
+    {
+        "merged": "dev.note11.flutter_naver_map.flutter_naver_map-release-35:/color/abc_background_cache_hint_selector_material_light.xml",
+        "source": "dev.note11.flutter_naver_map.flutter_naver_map-appcompat-1.7.0-23:/color/abc_background_cache_hint_selector_material_light.xml"
+    },
+    {
+        "merged": "dev.note11.flutter_naver_map.flutter_naver_map-release-35:/color/abc_primary_text_disable_only_material_light.xml",
+        "source": "dev.note11.flutter_naver_map.flutter_naver_map-appcompat-1.7.0-23:/color/abc_primary_text_disable_only_material_light.xml"
+    },
+    {
+        "merged": "dev.note11.flutter_naver_map.flutter_naver_map-release-35:/color/common_google_signin_btn_tint.xml",
+        "source": "dev.note11.flutter_naver_map.flutter_naver_map-jetified-play-services-base-18.1.0-29:/color/common_google_signin_btn_tint.xml"
+    },
+    {
+        "merged": "dev.note11.flutter_naver_map.flutter_naver_map-release-35:/color/abc_primary_text_material_dark.xml",
+        "source": "dev.note11.flutter_naver_map.flutter_naver_map-appcompat-1.7.0-23:/color/abc_primary_text_material_dark.xml"
+    },
+    {
+        "merged": "dev.note11.flutter_naver_map.flutter_naver_map-release-35:/color/abc_secondary_text_material_dark.xml",
+        "source": "dev.note11.flutter_naver_map.flutter_naver_map-appcompat-1.7.0-23:/color/abc_secondary_text_material_dark.xml"
+    },
+    {
+        "merged": "dev.note11.flutter_naver_map.flutter_naver_map-release-35:/color/abc_secondary_text_material_light.xml",
+        "source": "dev.note11.flutter_naver_map.flutter_naver_map-appcompat-1.7.0-23:/color/abc_secondary_text_material_light.xml"
+    },
+    {
+        "merged": "dev.note11.flutter_naver_map.flutter_naver_map-release-35:/color/abc_primary_text_material_light.xml",
+        "source": "dev.note11.flutter_naver_map.flutter_naver_map-appcompat-1.7.0-23:/color/abc_primary_text_material_light.xml"
+    },
+    {
+        "merged": "dev.note11.flutter_naver_map.flutter_naver_map-release-35:/color/common_google_signin_btn_text_dark.xml",
+        "source": "dev.note11.flutter_naver_map.flutter_naver_map-jetified-play-services-base-18.1.0-29:/color/common_google_signin_btn_text_dark.xml"
+    },
+    {
+        "merged": "dev.note11.flutter_naver_map.flutter_naver_map-release-35:/color/abc_search_url_text.xml",
+        "source": "dev.note11.flutter_naver_map.flutter_naver_map-appcompat-1.7.0-23:/color/abc_search_url_text.xml"
+    }
+]

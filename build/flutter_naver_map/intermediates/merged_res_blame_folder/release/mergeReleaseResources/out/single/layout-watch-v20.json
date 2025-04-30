@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "dev.note11.flutter_naver_map.flutter_naver_map-release-35:/layout-watch-v20/abc_alert_dialog_button_bar_material.xml",
+        "source": "dev.note11.flutter_naver_map.flutter_naver_map-appcompat-1.7.0-23:/layout-watch-v20/abc_alert_dialog_button_bar_material.xml"
+    },
+    {
+        "merged": "dev.note11.flutter_naver_map.flutter_naver_map-release-35:/layout-watch-v20/abc_alert_dialog_title_material.xml",
+        "source": "dev.note11.flutter_naver_map.flutter_naver_map-appcompat-1.7.0-23:/layout-watch-v20/abc_alert_dialog_title_material.xml"
+    }
+]
