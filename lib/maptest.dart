@@ -6,7 +6,12 @@ import 'dart:async';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NaverMapSdk.instance.initialize(clientId: '4aktoebb8w'); // 클라이언트 ID
+  await NaverMapSdk.instance.initialize(
+      clientId: '4aktoebb8w', // 클라이언트 ID
+      onAuthFailed: (ex) {
+        print("네이버맵 인증 오류 (새 프로젝트) : $ex");
+      }
+  );
   runApp(const MyApp());
 }
 
@@ -34,7 +39,7 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final Completer<NaverMapController> _controller = Completer();
-  LatLng? _currentLocation;
+  NLatLng? _currentLocation;
 
   @override
   void initState() {
@@ -49,25 +54,58 @@ class _MapScreenState extends State<MapScreen> {
         final Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
         );
+        final NLatLng userLatLng = NLatLng(position.latitude, position.longitude);
+
         setState(() {
-          _currentLocation = LatLng(position.latitude, position.longitude);
+          _currentLocation = userLatLng;
         });
-        final controller = await _controller.future;
-        controller.moveCamera(CameraUpdate.newLatLngZoom(
-          LatLng(position.latitude, position.longitude),
-          16,
-        ));
+
+        if (_controller.isCompleted) {
+          final controller = await _controller.future;
+          controller.updateCamera(
+            NCameraUpdate.fromCameraPosition(
+              NCameraPosition(
+                target: userLatLng,
+                zoom: 16,
+              ),
+            ),
+          );
+        }
+
+
       } catch (e) {
         print('위치 정보를 가져오는 중 오류 발생: $e');
       }
     } else if (status.isDenied) {
-      // 위치 권한이 거부되었을 경우
       print('위치 권한이 거부되었습니다.');
+      setState(() { _currentLocation = NLatLng(0,0); });
     } else if (status.isPermanentlyDenied) {
-      // 위치 권한이 영구적으로 거부되었을 경우
+      print('위치 권한이 영구적으로 거부되었습니다. 설정에서 허용해주세요.');
       openAppSettings();
+      setState(() { _currentLocation = NLatLng(0,0); });
+    } else {
+      print('위치 권한 상태: $status');
+      setState(() { _currentLocation = NLatLng(0,0); });
     }
   }
+
+  void _onMapReady(NaverMapController controller) async {
+    _controller.complete(controller);
+    print("네이버 맵 로딩 완료!");
+
+    if (_currentLocation != null) {
+      controller.updateCamera(
+        NCameraUpdate.fromCameraPosition(
+          NCameraPosition(
+            target: _currentLocation!,
+            zoom: 16,
+          ),
+        ),
+      );
+    }
+
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -79,11 +117,9 @@ class _MapScreenState extends State<MapScreen> {
         children: [
           if (_currentLocation != null)
             NaverMap(
-              onMapReady: (controller) {
-                _controller.complete(controller);
-              },
+              onMapReady: _onMapReady,
               options: NaverMapViewOptions(
-                initialCameraPosition: CameraPosition(
+                initialCameraPosition: NCameraPosition(
                   target: _currentLocation!,
                   zoom: 16,
                 ),
@@ -92,6 +128,7 @@ class _MapScreenState extends State<MapScreen> {
             )
           else
             const Center(child: CircularProgressIndicator()),
+
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
