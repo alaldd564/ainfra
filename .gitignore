@@ -1,0 +1,18 @@
+# Flutter/Dart build outputs
+build/
+.flutter-plugins
+.dart_tool/
+.packages
+
+# Android APK outputs
+*.apk
+
+# iOS build artifacts
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Generated.xcconfig
+ios/Flutter/Pods
+
+# VS Code and IntelliJ config
+.vscode/
+.idea/
