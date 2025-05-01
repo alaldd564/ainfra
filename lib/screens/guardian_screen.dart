@@ -18,7 +18,11 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   @override
   void initState() {
     super.initState();
-    _getCurrentLocation();
+
+    // 💡 화면이 다 그려지고 나서 위치 권한 요청
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _getCurrentLocation();
+    });
   }
 
   Future<void> _getCurrentLocation() async {
@@ -32,25 +36,38 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           ),
         );
 
+        final userLatLng = NLatLng(position.latitude, position.longitude);
+
         setState(() {
-          _currentLocation = NLatLng(position.latitude, position.longitude);
+          _currentLocation = userLatLng;
         });
 
-        // ✅ 위치 로그 출력
         debugPrint("📍 현재 위치: $_currentLocation");
 
         final controller = await _controller.future;
         controller.updateCamera(
           NCameraUpdate.withParams(
-            target: _currentLocation!,
+            target: userLatLng,
             zoom: 16,
           ),
         );
       } catch (e) {
         debugPrint('❌ 위치 가져오기 실패: $e');
+        _showErrorSnackBar('위치 정보를 가져오지 못했습니다.');
       }
+    } else if (status.isDenied || status.isPermanentlyDenied) {
+      _showErrorSnackBar('위치 권한이 필요합니다. 설정에서 허용해주세요.');
+      openAppSettings();
     } else {
-      openAppSettings(); // 권한 거부 시 설정 화면
+      _showErrorSnackBar('위치 권한 상태: $status');
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     }
   }
 
