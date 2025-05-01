@@ -1,16 +1,38 @@
 import 'package:flutter/material.dart';
+import 'left_sos_screen.dart';
+import 'right_settings_screen.dart';
+import 'top_taxi_screen.dart';
+import 'bottom_home_screen.dart';
 
 class BlindHomeScreen extends StatelessWidget {
   const BlindHomeScreen({super.key});
 
+  void _handleSwipe(BuildContext context, DragEndDetails details, Offset velocity) {
+    final vx = velocity.dx;
+    final vy = velocity.dy;
+
+    if (vx.abs() > vy.abs()) {
+      if (vx > 0) {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const RightSettingsScreen()));
+      } else {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const LeftSosScreen()));
+      }
+    } else {
+      if (vy > 0) {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const BottomHomeScreen()));
+      } else {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const TopTaxiScreen()));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // 화면 높이 가져오기
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      backgroundColor: Colors.black, // 배경색 블랙
+      backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text(
           '시각장애인 홈',
@@ -27,19 +49,24 @@ class BlindHomeScreen extends StatelessWidget {
             child: Text(
               '시각장애인 전용 서비스',
               style: TextStyle(
-                color: Color(0xFFFFD400),
+                color: Color(0xFFFFE51F),
                 fontSize: 20,
               ),
             ),
           ),
           const Spacer(),
           Center(
-            child: Container(
-              width: screenWidth * 0.8,  // 가로는 화면의 80%
-              height: screenHeight * 2 / 3,  // 세로는 화면의 2/3
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFD400),
-                borderRadius: BorderRadius.circular(16), // 모서리 둥글게
+            child: GestureDetector(
+              onPanEnd: (details) {
+                _handleSwipe(context, details, details.velocity.pixelsPerSecond);
+              },
+              child: Container(
+                width: screenWidth * 0.8,
+                height: screenHeight * 2 / 3,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFE51F),
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
           ),
