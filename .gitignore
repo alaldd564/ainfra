@@ -1,13 +1,14 @@
 # Flutter/Dart build outputs
 build/
-.flutter-plugins
 .dart_tool/
+.flutter-plugins
 .packages
 
-
-# Android APK outputs
-.apk
-.aab
+# Android APK & AAB outputs
+*.apk
+*.aab
+**/outputs/**/*.apk
+**/outputs/**/*.aab
 
 # iOS build artifacts
 ios/Flutter/App.framework
@@ -18,3 +19,7 @@ ios/Flutter/Pods
 # VS Code and IntelliJ config
 .vscode/
 .idea/
+
+# macOS or Windows files
+.DS_Store
+Thumbs.db
