@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../services/auth_service.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -16,6 +17,26 @@ class _SignupScreenState extends State<SignupScreen> {
   String _selectedRole = '시각장애인'; // 기본값
   final List<String> _roles = ['시각장애인', '보호자', '택시기사'];
 
+  @override
+  void initState() {
+    super.initState();
+    _requestLocationPermission();
+  }
+
+  Future<void> _requestLocationPermission() async {
+    final status = await Permission.location.request();
+    if (status.isGranted) {
+      debugPrint('✅ 위치 권한 허용됨');
+    } else if (status.isDenied || status.isPermanentlyDenied) {
+      debugPrint('⚠️ 위치 권한 거부됨');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('위치 권한이 필요합니다. 설정에서 허용해주세요.')),
+      );
+      openAppSettings();
+    }
+  }
+
   Future<void> _signUp() async {
     try {
       await _authService.signUp(
@@ -24,13 +45,13 @@ class _SignupScreenState extends State<SignupScreen> {
         _selectedRole,
       );
 
-      if (!mounted) return; // ⛑ context 사용 전 mounted 체크
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('회원가입 성공')),
       );
       Navigator.pop(context);
     } catch (e) {
-      if (!mounted) return; // ⛑ context 사용 전 mounted 체크
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('회원가입 실패: $e')),
       );

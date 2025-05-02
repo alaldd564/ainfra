@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'left_sos_screen.dart';
 import 'right_settings_screen.dart';
 import 'top_taxi_screen.dart';
-import 'bottom_home_screen.dart';
+import 'bottom_naviate_screen.dart';
 
 class BlindHomeScreen extends StatelessWidget {
   const BlindHomeScreen({super.key});
@@ -19,7 +19,7 @@ class BlindHomeScreen extends StatelessWidget {
       }
     } else {
       if (vy > 0) {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const BottomHomeScreen()));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const BottomNavigateScreen()));
       } else {
         Navigator.push(context, MaterialPageRoute(builder: (_) => const TopTaxiScreen()));
       }
