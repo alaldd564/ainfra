@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -15,7 +14,6 @@ class BottomNavigateScreen extends StatefulWidget {
 
 class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   final FlutterTts _tts = FlutterTts();
-  final stt.SpeechToText _speech = stt.SpeechToText();
   final Completer<NaverMapController> _mapController = Completer();
 
   String recognizedText = '';
@@ -26,7 +24,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   void initState() {
     super.initState();
     _speak('목적지를 말씀해주세요.');
-    _startListening();
+    _fakeRecognition(); // 실제 음성 인식 대신 임시 텍스트 사용
     _getCurrentLocation();
   }
 
@@ -36,18 +34,14 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     await _tts.speak(text);
   }
 
-  Future<void> _startListening() async {
-    bool available = await _speech.initialize();
-    if (available) {
-      _speech.listen(onResult: (result) {
-        setState(() {
-          recognizedText = result.recognizedWords;
-        });
-        _speak('$recognizedText이 맞으시다면 화면을 두 번 터치해주세요.');
+  // 🔧 음성 인식 없이 임시 텍스트 처리
+  void _fakeRecognition() {
+    Future.delayed(Duration(seconds: 1), () {
+      setState(() {
+        recognizedText = '서울역'; // 원하는 임시 목적지 입력
       });
-    } else {
-      _speak('음성 인식을 시작할 수 없습니다.');
-    }
+      _speak('$recognizedText이 맞으시다면 화면을 두 번 터치해주세요.');
+    });
   }
 
   Future<void> _getCurrentLocation() async {
@@ -103,7 +97,9 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                   });
                 },
                 child: Text(
-                  recognizedText.isEmpty ? '말씀해주세요...' : '입력된 목적지: $recognizedText',
+                  recognizedText.isEmpty
+                      ? '말씀해주세요...'
+                      : '입력된 목적지: $recognizedText',
                   style: const TextStyle(color: Colors.white, fontSize: 20),
                   textAlign: TextAlign.center,
                 ),
