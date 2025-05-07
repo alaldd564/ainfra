@@ -7,21 +7,37 @@ import 'bottom_naviate_screen.dart';
 class BlindHomeScreen extends StatelessWidget {
   const BlindHomeScreen({super.key});
 
-  void _handleSwipe(BuildContext context, DragEndDetails details, Offset velocity) {
+  void _handleSwipe(
+    BuildContext context,
+    DragEndDetails details,
+    Offset velocity,
+  ) {
     final vx = velocity.dx;
     final vy = velocity.dy;
 
     if (vx.abs() > vy.abs()) {
       if (vx > 0) {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const RightSettingsScreen()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const RightSettingsScreen()),
+        );
       } else {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const LeftSosScreen()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const LeftSosScreen()),
+        );
       }
     } else {
       if (vy > 0) {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const BottomNavigateScreen()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const BottomNavigateScreen()),
+        );
       } else {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const TopTaxiScreen()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const TopTaxiScreen()),
+        );
       }
     }
   }
@@ -48,17 +64,18 @@ class BlindHomeScreen extends StatelessWidget {
             alignment: Alignment.topCenter,
             child: Text(
               '시각장애인 전용 서비스',
-              style: TextStyle(
-                color: Color(0xFFFFE51F),
-                fontSize: 20,
-              ),
+              style: TextStyle(color: Color(0xFFFFE51F), fontSize: 20),
             ),
           ),
           const Spacer(),
           Center(
             child: GestureDetector(
               onPanEnd: (details) {
-                _handleSwipe(context, details, details.velocity.pixelsPerSecond);
+                _handleSwipe(
+                  context,
+                  details,
+                  details.velocity.pixelsPerSecond,
+                );
               },
               child: Container(
                 width: screenWidth * 0.8,
