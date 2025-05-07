@@ -8,23 +8,20 @@ import 'package:flutter_naver_map/flutter_naver_map.dart';
 // 🔥 화면 import
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
-import 'screens/blind_home_screen.dart';     // 시각장애인 홈
-import 'screens/guardian_screen.dart';      // 보호자 홈
+import 'screens/blind_home_screen.dart'; // 시각장애인 홈
+import 'screens/guardian_screen.dart'; // 보호자 홈
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // ✅ Firebase 초기화
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // ✅ 최신 방식으로 Naver 지도 SDK 초기화
   await FlutterNaverMap().init(
-  clientId: '4aktoebb8w',
-  onAuthFailed: (e) => debugPrint("네이버 지도 인증 실패: $e"),
-);
-
+    clientId: '4aktoebb8w',
+    onAuthFailed: (e) => debugPrint("네이버 지도 인증 실패: $e"),
+  );
 
   runApp(const MyApp());
 }
@@ -39,9 +36,9 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       initialRoute: '/',
       routes: {
-        '/': (context) => const LoginScreen(),              // 로그인 화면
-        '/signup': (context) => const SignupScreen(),       // 회원가입 화면
-        '/blind_home': (context) => const BlindHomeScreen(),  // 시각장애인 홈
+        '/': (context) => const LoginScreen(), // 로그인 화면
+        '/signup': (context) => const SignupScreen(), // 회원가입 화면
+        '/blind_home': (context) => const BlindHomeScreen(), // 시각장애인 홈
         '/guardian_home': (context) => const GuardianHomeScreen(), // 보호자 홈
       },
     );
