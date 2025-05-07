@@ -23,7 +23,7 @@ class RightSettingsScreen extends StatelessWidget {
           Expanded(
             child: Center(
               child: Text(
-                '전체 화면 조정',
+                '전체 화면 색조정',
                 style: const TextStyle(color: Colors.white, fontSize: 20),
               ),
             ),
