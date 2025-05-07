@@ -1,25 +1,35 @@
-# Flutter/Dart build outputs
+# --- Flutter & Dart build ---
 build/
 .dart_tool/
+.dart_tool/package_config.json
 .flutter-plugins
+.flutter-plugins-dependencies
 .packages
+.pub-cache/
+generated_plugin_registrant.*
 
-# Android APK & AAB outputs
+# --- Android outputs (APK, AAB 등) ---
 *.apk
 *.aab
 **/outputs/**/*.apk
 **/outputs/**/*.aab
 
-# iOS build artifacts
+# --- iOS outputs ---
 ios/Flutter/App.framework
 ios/Flutter/Flutter.framework
 ios/Flutter/Generated.xcconfig
 ios/Flutter/Pods
 
-# VS Code and IntelliJ config
+# --- macOS, Windows, Linux outputs ---
+macos/Flutter/
+linux/Flutter/
+windows/Flutter/
+.DS_Store
+Thumbs.db
+
+# --- IDE 설정 ---
 .vscode/
 .idea/
 
-# macOS or Windows files
-.DS_Store
-Thumbs.db
+# --- 사용자 설정 파일 ---
+local.properties
