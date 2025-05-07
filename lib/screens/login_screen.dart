@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart'; // ✅ 날짜 포맷을 위해 import
 import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -14,6 +15,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
   final AuthService _authService = AuthService();
 
+  // ✅ 빌드 시각을 보기 좋게 포맷
+  final String buildTime = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+
   Future<void> _login() async {
     try {
       await _authService.signIn(
@@ -24,7 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final uid = FirebaseAuth.instance.currentUser!.uid;
       final role = await _authService.getUserRole(uid);
 
-      if (!mounted) return; // ✅ context 사용 전 mounted 체크
+      if (!mounted) return;
 
       if (role == '시각장애인') {
         Navigator.pushReplacementNamed(context, '/blind_home');
@@ -36,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
-      if (!mounted) return; // ✅ context 사용 전 mounted 체크
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('로그인 실패: $e')),
       );
@@ -50,6 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
               controller: emailController,
@@ -66,11 +71,16 @@ class _LoginScreenState extends State<LoginScreen> {
               child: const Text('로그인'),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/signup');
-              },
+              onPressed: () => Navigator.pushNamed(context, '/signup'),
               child: const Text('회원가입하러 가기'),
-            )
+            ),
+            const Spacer(),
+            Center(
+              child: Text(
+                '빌드 시각: $buildTime',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
           ],
         ),
       ),

@@ -3,6 +3,8 @@ import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/auth_service.dart';
 
 class GuardianHomeScreen extends StatefulWidget {
   const GuardianHomeScreen({super.key});
@@ -14,12 +16,11 @@ class GuardianHomeScreen extends StatefulWidget {
 class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   final Completer<NaverMapController> _controller = Completer();
   NLatLng? _currentLocation;
+  final AuthService _authService = AuthService();
 
   @override
   void initState() {
     super.initState();
-
-    // 💡 화면이 다 그려지고 나서 위치 권한 요청
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _getCurrentLocation();
     });
@@ -41,8 +42,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         setState(() {
           _currentLocation = userLatLng;
         });
-
-        debugPrint("📍 현재 위치: $_currentLocation");
 
         final controller = await _controller.future;
         controller.updateCamera(
@@ -71,16 +70,63 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     }
   }
 
+  void _handleMenu(String value) async {
+    if (value == 'logout') {
+      await _authService.signOut();
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+      }
+    } else if (value == 'connect') {
+      showDialog(
+        context: context,
+        builder: (_) {
+          final TextEditingController _idController = TextEditingController();
+          return AlertDialog(
+            title: const Text('시각장애인 고유번호 입력'),
+            content: TextField(
+              controller: _idController,
+              decoration: const InputDecoration(hintText: '고유번호를 입력하세요'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  // TODO: 연결 로직 구현
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('고유번호가 등록되었습니다.')),
+                  );
+                },
+                child: const Text('등록'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('보호자 홈')),
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        automaticallyImplyLeading: false,
+        title: const Text('보호자 홈', style: TextStyle(color: Color(0xFFFFD400))),
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Color(0xFFFFD400)),
+            onSelected: _handleMenu,
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'logout', child: Text('로그아웃')),
+              PopupMenuItem(value: 'connect', child: Text('고유번호 입력')),
+            ],
+          ),
+        ],
+      ),
       body: _currentLocation == null
           ? const Center(child: CircularProgressIndicator())
           : NaverMap(
-              onMapReady: (controller) {
-                _controller.complete(controller);
-              },
+              onMapReady: (controller) => _controller.complete(controller),
               options: NaverMapViewOptions(
                 initialCameraPosition: NCameraPosition(
                   target: _currentLocation!,
