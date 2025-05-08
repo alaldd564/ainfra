@@ -1,4 +1,3 @@
-// lib/screens/left_sos_screen.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
@@ -15,16 +14,15 @@ class LeftSosScreen extends StatefulWidget {
 class _LeftSosScreenState extends State<LeftSosScreen> {
   bool _isSending = false;
 
-  // Firebase Cloud Messaging 서버 키
+  // ✅ Firebase Cloud Messaging 서버 키 (네트워크 요청에 필요)
   static const String _serverKey = 'YOUR_FIREBASE_SERVER_KEY';
 
-  // 연동된 보호자만 필터해서 FCM 전송
+  // ✅ 연동된 보호자만 필터해서 FCM 전송
   Future<void> _sendFcmToLinkedGuardians(String blindUid) async {
-    final snapshot =
-        await FirebaseFirestore.instance
-            .collection('guardians')
-            .where('linked_user_uid', isEqualTo: blindUid)
-            .get();
+    final snapshot = await FirebaseFirestore.instance
+        .collection('guardians')
+        .where('linked_user_uid', isEqualTo: blindUid)
+        .get();
 
     for (var doc in snapshot.docs) {
       final token = doc['fcm_token'];
@@ -50,8 +48,8 @@ class _LeftSosScreenState extends State<LeftSosScreen> {
     }
   }
 
-  // 로그인 사용자 기준 Firestore 저장 + 연동 보호자에게만 알림
-  void _sendSosSignal() async {
+  // ✅ Firestore 저장 + FCM 전송 + UI 알림
+  Future<void> _sendSosSignal() async {
     if (_isSending) return;
     setState(() => _isSending = true);
 
@@ -59,24 +57,26 @@ class _LeftSosScreenState extends State<LeftSosScreen> {
       final blindUid = FirebaseAuth.instance.currentUser?.uid;
       if (blindUid == null) throw '로그인된 사용자 없음';
 
-      // Firestore에 SOS 기록 저장
       await FirebaseFirestore.instance.collection('sos_signals').add({
         'timestamp': FieldValue.serverTimestamp(),
-        'user': blindUid, // 실제 사용자 UID
+        'user': blindUid,
       });
 
-      // 연동된 보호자에게만 FCM 전송
       await _sendFcmToLinkedGuardians(blindUid);
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('긴급신호 전송 완료')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('긴급신호 전송 완료')),
+      );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('전송 실패: $e')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('전송 실패: $e')),
+      );
     } finally {
-      setState(() => _isSending = false);
+      if (mounted) {
+        setState(() => _isSending = false);
+      }
     }
   }
 
@@ -96,17 +96,15 @@ class _LeftSosScreenState extends State<LeftSosScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 40), // 텍스트와 버튼 간 간격
-
+            const SizedBox(height: 40),
             GestureDetector(
               onTap: _sendSosSignal,
               child: Container(
                 width: 180,
                 height: 180,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.red,
-                  image: const DecorationImage(
+                  image: DecorationImage(
                     image: AssetImage('assets/images/sos_button.png'),
                     fit: BoxFit.cover,
                   ),

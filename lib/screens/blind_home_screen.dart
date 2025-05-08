@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/services.dart'; // 클립보드 복사용
+import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
 
 import 'left_sos_screen.dart';
@@ -16,17 +16,17 @@ class BlindHomeScreen extends StatelessWidget {
     final vx = velocity.dx;
     final vy = velocity.dy;
 
+    Widget nextScreen;
     if (vx.abs() > vy.abs()) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => vx > 0 ? const RightSettingsScreen() : const LeftSosScreen()),
-      );
+      nextScreen = vx > 0 ? const RightSettingsScreen() : const LeftSosScreen();
     } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => vy > 0 ? const BottomNavigateScreen() : const TopTaxiScreen()),
-      );
+      nextScreen = vy > 0 ? const BottomNavigateScreen() : const TopTaxiScreen();
     }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => nextScreen), // ✅ context 사용
+    );
   }
 
   void _handleMenu(BuildContext context, String value) async {
@@ -42,7 +42,7 @@ class BlindHomeScreen extends StatelessWidget {
         if (!context.mounted) return;
         showDialog(
           context: context,
-          builder: (_) => AlertDialog(
+          builder: (context) => AlertDialog(
             title: const Text('도움말'),
             content: const Text('화면을 상하좌우로 스와이프하면 기능을 이동할 수 있습니다.'),
             actions: [
@@ -62,7 +62,7 @@ class BlindHomeScreen extends StatelessWidget {
         if (!context.mounted) return;
         showDialog(
           context: context,
-          builder: (_) => AlertDialog(
+          builder: (context) => AlertDialog(
             title: const Text('고유번호 생성됨'),
             content: Text('고유번호: $generatedId\n(자동 복사되었습니다)'),
             actions: [
