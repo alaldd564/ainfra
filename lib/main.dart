@@ -8,30 +8,10 @@ import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/blind_home_screen.dart';
 import 'screens/guardian_screen.dart';
-import 'screens/right_settings_screen.dart'; // 밝기/채도/명도 조절화면
+import 'package:ainfra/screens/right_settings_screen.dart'; // 밝기/채도/명도 조절화면
 import 'package:provider/provider.dart';
-
-// ✅ 전역 설정 클래스
-class BrightnessSettings extends ChangeNotifier {
-  double brightness = 1.0;
-  double saturation = 1.0;
-  double lightness = 0.5;
-
-  void updateBrightness(double value) {
-    brightness = value.clamp(0.0, 1.0);
-    notifyListeners();
-  }
-
-  void updateSaturation(double value) {
-    saturation = value.clamp(0.0, 1.0);
-    notifyListeners();
-  }
-
-  void updateLightness(double value) {
-    lightness = value.clamp(0.0, 1.0);
-    notifyListeners();
-  }
-}
+import 'package:ainfra/screens/brightness_settings.dart';
+// 반드시 이 파일 import
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,7 +26,7 @@ void main() async {
   runApp(
     ChangeNotifierProvider(
       create: (_) => BrightnessSettings(),
-      child: const MyApp(),
+      child: MyApp(), // MaterialApp이 MyApp 안에 있음
     ),
   );
 }

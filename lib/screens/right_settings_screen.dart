@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'brightness_settings.dart';
+import 'package:ainfra/screens/brightness_settings.dart';
 
 class RightSettingsScreen extends StatelessWidget {
   const RightSettingsScreen({super.key});
@@ -10,16 +10,13 @@ class RightSettingsScreen extends StatelessWidget {
     final settings = Provider.of<BrightnessSettings>(context);
 
     return Scaffold(
-      backgroundColor: Colors.transparent, // 배경 투명
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text('전체 화면 설정')),
       body: Row(
         children: [
-          _buildSlider('밝기', settings.brightness, Colors.yellow,
-              settings.updateBrightness),
-          _buildSlider('채도', settings.saturation, Colors.pink,
-              settings.updateSaturation),
-          _buildSlider('명도', settings.lightness, Colors.cyan,
-              settings.updateLightness),
+          _buildSlider('밝기', settings.brightness, Colors.yellow, settings.updateBrightness),
+          _buildSlider('채도', settings.saturation, Colors.pink, settings.updateSaturation),
+          _buildSlider('명도', settings.lightness, Colors.cyan, settings.updateLightness),
           Expanded(
             child: Center(
               child: Text(
@@ -33,8 +30,7 @@ class RightSettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSlider(String label, double value, Color color,
-      void Function(double) onChanged) {
+  Widget _buildSlider(String label, double value, Color color, void Function(double) onChanged) {
     return Container(
       width: 60,
       padding: const EdgeInsets.symmetric(vertical: 16),
