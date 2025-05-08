@@ -30,7 +30,6 @@ dependencies:
   #speech_to_text: ^6.3.0
   provider: ^6.0.0
 
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
