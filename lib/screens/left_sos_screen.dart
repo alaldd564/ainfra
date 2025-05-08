@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LeftSosScreen extends StatefulWidget {
   const LeftSosScreen({super.key});
@@ -17,16 +18,24 @@ class _LeftSosScreenState extends State<LeftSosScreen> {
   // Firebase Cloud Messaging 서버 키
   static const String _serverKey = 'YOUR_FIREBASE_SERVER_KEY';
 
-  // Firestore에서 보호자 토큰 가져와 FCM 전송
-  Future<void> _sendFcmToGuardians() async {
+  // 연동된 보호자만 필터해서 FCM 전송
+  Future<void> _sendFcmToLinkedGuardians(String blindUid) async {
     final snapshot =
-        await FirebaseFirestore.instance.collection('guardians').get();
+        await FirebaseFirestore.instance
+            .collection('guardians')
+            .where('linked_user_uid', isEqualTo: blindUid)
+            .get();
 
     for (var doc in snapshot.docs) {
       final token = doc['fcm_token'];
+      if (token == null) continue;
+
       final body = {
         'to': token,
-        'notification': {'title': '긴급신호 수신', 'body': '사용자가 SOS 버튼을 눌렀습니다.'},
+        'notification': {
+          'title': '긴급신호 수신',
+          'body': '연결된 시각장애인이 SOS 버튼을 눌렀습니다.',
+        },
         'data': {'click_action': 'FLUTTER_NOTIFICATION_CLICK'},
       };
 
@@ -41,21 +50,24 @@ class _LeftSosScreenState extends State<LeftSosScreen> {
     }
   }
 
+  // 로그인 사용자 기준 Firestore 저장 + 연동 보호자에게만 알림
   void _sendSosSignal() async {
-    if (_isSending) return; // 중복 클릭 방지
+    if (_isSending) return;
     setState(() => _isSending = true);
 
     try {
-      // Firebase Firestore에 긴급신호 업로드
+      final blindUid = FirebaseAuth.instance.currentUser?.uid;
+      if (blindUid == null) throw '로그인된 사용자 없음';
+
+      // Firestore에 SOS 기록 저장
       await FirebaseFirestore.instance.collection('sos_signals').add({
         'timestamp': FieldValue.serverTimestamp(),
-        'user': 'user_id_123', // 실제 로그인 사용자 ID로 대체 필요
+        'user': blindUid, // 실제 사용자 UID
       });
 
-      // 보호자에게 푸시 알림 전송
-      await _sendFcmToGuardians();
+      // 연동된 보호자에게만 FCM 전송
+      await _sendFcmToLinkedGuardians(blindUid);
 
-      // 실제로는 FCM 토큰을 찾아서 메시지 전송함 (5단계에서 설명)
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('긴급신호 전송 완료')));

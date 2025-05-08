@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart'; // ✅ [FCM 알림 수신용]
 import '../services/auth_service.dart';
 
 class GuardianHomeScreen extends StatefulWidget {
@@ -23,6 +24,34 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _getCurrentLocation();
+      _initFCM(); // FCM 초기화 추가
+    });
+  }
+
+  // Firebase Cloud Messaging 수신 및 팝업 알림 표시
+  void _initFCM() async {
+    await FirebaseMessaging.instance.requestPermission();
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      final title = message.notification?.title ?? '알림';
+      final body = message.notification?.body ?? '내용 없음';
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder:
+            (_) => AlertDialog(
+              title: Text(title),
+              content: Text(body),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('확인'),
+                ),
+              ],
+            ),
+      );
     });
   }
 
@@ -45,10 +74,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
         final controller = await _controller.future;
         controller.updateCamera(
-          NCameraUpdate.withParams(
-            target: userLatLng,
-            zoom: 16,
-          ),
+          NCameraUpdate.withParams(target: userLatLng, zoom: 16),
         );
       } catch (e) {
         debugPrint('❌ 위치 가져오기 실패: $e');
@@ -64,9 +90,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
   void _showErrorSnackBar(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -116,25 +142,27 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Color(0xFFFFD400)),
             onSelected: _handleMenu,
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'logout', child: Text('로그아웃')),
-              PopupMenuItem(value: 'connect', child: Text('고유번호 입력')),
-            ],
+            itemBuilder:
+                (context) => const [
+                  PopupMenuItem(value: 'logout', child: Text('로그아웃')),
+                  PopupMenuItem(value: 'connect', child: Text('고유번호 입력')),
+                ],
           ),
         ],
       ),
-      body: _currentLocation == null
-          ? const Center(child: CircularProgressIndicator())
-          : NaverMap(
-              onMapReady: (controller) => _controller.complete(controller),
-              options: NaverMapViewOptions(
-                initialCameraPosition: NCameraPosition(
-                  target: _currentLocation!,
-                  zoom: 16,
+      body:
+          _currentLocation == null
+              ? const Center(child: CircularProgressIndicator())
+              : NaverMap(
+                onMapReady: (controller) => _controller.complete(controller),
+                options: NaverMapViewOptions(
+                  initialCameraPosition: NCameraPosition(
+                    target: _currentLocation!,
+                    zoom: 16,
+                  ),
+                  locationButtonEnable: true,
                 ),
-                locationButtonEnable: true,
               ),
-            ),
     );
   }
 }
