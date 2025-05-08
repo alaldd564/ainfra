@@ -84,35 +84,37 @@ class _LeftSosScreenState extends State<LeftSosScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text(
-            'SOS 긴급 호출',
-            style: TextStyle(
-              fontSize: 24,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'SOS 긴급 호출',
+              style: TextStyle(
+                fontSize: 24,
+                color: Colors.yellow,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-          const SizedBox(height: 40), // 텍스트와 버튼 간 간격
+            const SizedBox(height: 40), // 텍스트와 버튼 간 간격
 
-          GestureDetector(
-            onTap: _sendSosSignal,
-            child: Container(
-              width: 180,
-              height: 180,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.red,
-                image: const DecorationImage(
-                  image: AssetImage('assets/images/sos_button.png'),
-                  fit: BoxFit.cover,
+            GestureDetector(
+              onTap: _sendSosSignal,
+              child: Container(
+                width: 180,
+                height: 180,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.red,
+                  image: const DecorationImage(
+                    image: AssetImage('assets/images/sos_button.png'),
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

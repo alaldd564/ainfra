@@ -4,7 +4,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_messaging/firebase_messaging.dart'; // ✅ [FCM 알림 수신용]
+import 'package:firebase_messaging/firebase_messaging.dart'; // FCM 알림 수신용
+import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore 추가
 import '../services/auth_service.dart';
 
 class GuardianHomeScreen extends StatefulWidget {
@@ -25,6 +26,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _getCurrentLocation();
       _initFCM(); // FCM 초기화 추가
+      _checkPendingSos(); // 실행 시 SOS 확인 추가
     });
   }
 
@@ -53,6 +55,55 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             ),
       );
     });
+  }
+
+  // 추가: 실행 시 SOS 수신 이력 확인
+  Future<void> _checkPendingSos() async {
+    final guardianUid = FirebaseAuth.instance.currentUser?.uid;
+    if (guardianUid == null) return;
+
+    final guardianDoc =
+        await FirebaseFirestore.instance
+            .collection('guardians')
+            .doc(guardianUid)
+            .get();
+
+    if (!guardianDoc.exists) return;
+    final linkedUserUid = guardianDoc.data()?['linked_user_uid'];
+    if (linkedUserUid == null) return;
+
+    final sosSnapshot =
+        await FirebaseFirestore.instance
+            .collection('sos_signals')
+            .where('user', isEqualTo: linkedUserUid)
+            .orderBy('timestamp', descending: true)
+            .limit(1)
+            .get();
+
+    if (sosSnapshot.docs.isEmpty) return;
+
+    final latest = sosSnapshot.docs.first;
+    final timestamp = latest['timestamp'] as Timestamp;
+    final now = DateTime.now();
+
+    if (now.difference(timestamp.toDate()).inMinutes < 10) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false, // 확인 전까지 팝업 유지
+        builder:
+            (_) => AlertDialog(
+              title: const Text('긴급신호 수신'),
+              content: const Text('연결된 시각장애인이 SOS 버튼을 눌렀습니다.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('확인'),
+                ),
+              ],
+            ),
+      );
+    }
   }
 
   Future<void> _getCurrentLocation() async {
