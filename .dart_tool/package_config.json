@@ -281,7 +281,7 @@
       "name": "http",
       "rootUri": "file:///C:/Users/user/AppData/Local/Pub/Cache/hosted/pub.dev/http-1.4.0",
       "packageUri": "lib/",
-      "languageVersion": "3.4"
+      "languageVersion": "2.19"
     },
     {
       "name": "http_parser",
