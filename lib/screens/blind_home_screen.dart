@@ -19,12 +19,12 @@ class BlindHomeScreen extends StatelessWidget {
     if (vx.abs() > vy.abs()) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => vx > 0 ? const RightSettingsScreen() : const LeftSosScreen()),
+        MaterialPageRoute(builder: (context) => vx > 0 ? const RightSettingsScreen() : const LeftSosScreen()),
       );
     } else {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => vy > 0 ? const BottomNavigateScreen() : const TopTaxiScreen()),
+        MaterialPageRoute(builder: (context) => vy > 0 ? const BottomNavigateScreen() : const TopTaxiScreen()),
       );
     }
   }
