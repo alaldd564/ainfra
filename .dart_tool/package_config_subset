@@ -159,9 +159,9 @@ geolocator_windows
 file:///C:/Users/user/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator_windows-0.2.5/
 file:///C:/Users/user/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator_windows-0.2.5/lib/
 http
-2.19
-file:///C:/Users/user/AppData/Local/Pub/Cache/hosted/pub.dev/http-0.13.6/
-file:///C:/Users/user/AppData/Local/Pub/Cache/hosted/pub.dev/http-0.13.6/lib/
+3.4
+file:///C:/Users/user/AppData/Local/Pub/Cache/hosted/pub.dev/http-1.4.0/
+file:///C:/Users/user/AppData/Local/Pub/Cache/hosted/pub.dev/http-1.4.0/lib/
 http_parser
 3.4
 file:///C:/Users/user/AppData/Local/Pub/Cache/hosted/pub.dev/http_parser-4.1.2/
