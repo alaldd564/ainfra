@@ -1,5 +1,6 @@
 // lib/screens/left_sos_screen.dart
-
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -13,6 +14,33 @@ class LeftSosScreen extends StatefulWidget {
 class _LeftSosScreenState extends State<LeftSosScreen> {
   bool _isSending = false;
 
+  // Firebase Cloud Messaging 서버 키
+  static const String _serverKey = 'YOUR_FIREBASE_SERVER_KEY';
+
+  // Firestore에서 보호자 토큰 가져와 FCM 전송
+  Future<void> _sendFcmToGuardians() async {
+    final snapshot =
+        await FirebaseFirestore.instance.collection('guardians').get();
+
+    for (var doc in snapshot.docs) {
+      final token = doc['fcm_token'];
+      final body = {
+        'to': token,
+        'notification': {'title': '긴급신호 수신', 'body': '사용자가 SOS 버튼을 눌렀습니다.'},
+        'data': {'click_action': 'FLUTTER_NOTIFICATION_CLICK'},
+      };
+
+      await http.post(
+        Uri.parse('https://fcm.googleapis.com/fcm/send'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'key=$_serverKey',
+        },
+        body: jsonEncode(body),
+      );
+    }
+  }
+
   void _sendSosSignal() async {
     if (_isSending) return; // 중복 클릭 방지
     setState(() => _isSending = true);
@@ -23,6 +51,9 @@ class _LeftSosScreenState extends State<LeftSosScreen> {
         'timestamp': FieldValue.serverTimestamp(),
         'user': 'user_id_123', // 실제 로그인 사용자 ID로 대체 필요
       });
+
+      // 보호자에게 푸시 알림 전송
+      await _sendFcmToGuardians();
 
       // 실제로는 FCM 토큰을 찾아서 메시지 전송함 (5단계에서 설명)
       ScaffoldMessenger.of(
