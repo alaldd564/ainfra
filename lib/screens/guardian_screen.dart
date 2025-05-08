@@ -166,12 +166,46 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () {
-                  // TODO: 연결 로직 구현
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('고유번호가 등록되었습니다.')),
-                  );
+                // ✅ 고유번호 등록 시 Firestore에 연결 정보 저장
+                onPressed: () async {
+                  final code = _idController.text.trim();
+                  if (code.isEmpty) return;
+
+                  try {
+                    final blindDoc =
+                        await FirebaseFirestore.instance
+                            .collection('blind_users')
+                            .doc(code)
+                            .get();
+
+                    if (!blindDoc.exists) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('고유번호가 올바르지 않습니다.')),
+                      );
+                      return;
+                    }
+
+                    final blindData = blindDoc.data()!;
+                    final guardianUid = FirebaseAuth.instance.currentUser?.uid;
+                    if (guardianUid == null) throw '로그인된 보호자 없음';
+
+                    await FirebaseFirestore.instance
+                        .collection('guardians')
+                        .doc(guardianUid)
+                        .set({
+                          'linked_user_code': code,
+                          'linked_user_uid': blindData['uid'],
+                        }, SetOptions(merge: true));
+
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('연결이 완료되었습니다.')),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('연결 실패: $e')));
+                  }
                 },
                 child: const Text('등록'),
               ),
