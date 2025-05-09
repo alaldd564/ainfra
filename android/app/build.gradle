@@ -39,6 +39,11 @@ android {
     }
 }
 
+dependencies {
+    implementation("io.flutter:flutter_embedding_debug:1.0.0-")
+    implementation 'com.skt.tmap:TmapSDK:1.76.0'
+}
+
 flutter {
     source = "../.."
 }
