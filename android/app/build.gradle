@@ -39,9 +39,16 @@ android {
     }
 }
 
+repositories {
+    flatDir {
+        dirs 'libs'
+    }
+}
+
 dependencies {
     implementation("io.flutter:flutter_embedding_debug:1.0.0-")
-    implementation 'com.skt.tmap:TmapSDK:1.76.0'
+    implementation name: 'tmap-sdk-2.1', ext: 'aar'
+    implementation name: 'vsm-tmap-sdk-v2-android-1.7.23', ext: 'aar'
 }
 
 flutter {
