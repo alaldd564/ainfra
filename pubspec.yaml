@@ -28,7 +28,7 @@ dependencies:
   #cloud_firestore: ^4.13.0
   #speech_to_text: ^6.3.0
   provider: ^6.0.0
-  http: ^0.13.6
+  http: ^1.1.0
 
 dev_dependencies:
   flutter_test:

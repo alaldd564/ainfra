@@ -261,9 +261,9 @@
     },
     {
       "name": "http",
-      "rootUri": "file:///C:/Users/samsung-user/AppData/Local/Pub/Cache/hosted/pub.dev/http-0.13.6",
+      "rootUri": "file:///C:/Users/samsung-user/AppData/Local/Pub/Cache/hosted/pub.dev/http-1.4.0",
       "packageUri": "lib/",
-      "languageVersion": "2.19"
+      "languageVersion": "3.4"
     },
     {
       "name": "http_parser",
@@ -471,7 +471,7 @@
     },
     {
       "name": "provider",
-      "rootUri": "file:///C:/Users/samsung-user/AppData/Local/Pub/Cache/hosted/pub.dev/provider-6.1.5",
+      "rootUri": "file:///C:/Users/samsung-user/AppData/Local/Pub/Cache/hosted/pub.dev/provider-6.1.1",
       "packageUri": "lib/",
       "languageVersion": "2.12"
     },
@@ -566,7 +566,7 @@
       "languageVersion": "3.7"
     }
   ],
-  "generated": "2025-05-09T05:45:28.302927Z",
+  "generated": "2025-05-09T07:12:34.389782Z",
   "generator": "pub",
   "generatorVersion": "3.7.2",
   "flutterRoot": "file:///C:/flutter",
