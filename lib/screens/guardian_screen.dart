@@ -202,6 +202,12 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                           'linked_user_uid': blindData['uid'],
                         }, SetOptions(merge: true));
 
+                    // ✅ 시각장애인 문서에도 보호자 UID 저장 (양방향 연동)
+                    await FirebaseFirestore.instance
+                        .collection('blind_users')
+                        .doc(code)
+                        .update({'user_key': guardianUid});
+
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('고유번호가 등록되었습니다.')),
                     );
