@@ -23,25 +23,28 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   @override
   void initState() {
     super.initState();
-    _speak('목적지를 말씀해주세요.');
-    _fakeRecognition(); // 실제 음성 인식 대신 임시 텍스트 사용
-    _getCurrentLocation();
+    _initTTS();
+    _startFlow();
+  }
+
+  void _initTTS() {
+    _tts.setLanguage("ko-KR");
+    _tts.setSpeechRate(0.5);
+    _tts.awaitSpeakCompletion(true);
   }
 
   Future<void> _speak(String text) async {
-    await _tts.setLanguage("ko-KR");
-    await _tts.setSpeechRate(0.5);
     await _tts.speak(text);
   }
 
-  // 🔧 음성 인식 없이 임시 텍스트 처리
-  void _fakeRecognition() {
-    Future.delayed(Duration(seconds: 1), () {
-      setState(() {
-        recognizedText = '서울역'; // 원하는 임시 목적지 입력
-      });
-      _speak('$recognizedText이 맞으시다면 화면을 두 번 터치해주세요.');
+  Future<void> _startFlow() async {
+    await _speak('목적지를 말씀해주세요.');
+    await Future.delayed(const Duration(seconds: 1));
+    setState(() {
+      recognizedText = '서울역';
     });
+    await _speak('$recognizedText이 맞으시다면 화면을 두 번 터치해주세요.');
+    await _getCurrentLocation();
   }
 
   Future<void> _getCurrentLocation() async {
@@ -58,11 +61,29 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
           _currentLocation = NLatLng(position.latitude, position.longitude);
         });
       } catch (e) {
-        _speak('위치 정보를 가져오지 못했습니다.');
+        await _speak('위치 정보를 가져오지 못했습니다.');
       }
     } else {
-      _speak('위치 권한이 필요합니다. 설정에서 허용해주세요.');
+      await _speak('위치 권한이 필요합니다. 설정에서 허용해주세요.');
     }
+  }
+
+  Future<void> _handleDoubleTap() async {
+    await _speak('$recognizedText로 경로를 안내합니다.');
+
+    if (_currentLocation == null) {
+      await _speak('위치 정보를 불러오는 중입니다. 잠시만 기다려주세요.');
+      while (_currentLocation == null) {
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+    }
+
+    setState(() {
+      showMap = true;
+    });
+
+    await Future.delayed(const Duration(milliseconds: 300));
+    await _speak('지도를 표시합니다. 현재 위치 기준입니다.');
   }
 
   @override
@@ -90,12 +111,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                 ))
           : Center(
               child: GestureDetector(
-                onDoubleTap: () {
-                  _speak('$recognizedText로 경로를 안내합니다.');
-                  setState(() {
-                    showMap = true;
-                  });
-                },
+                onDoubleTap: _handleDoubleTap,
                 child: Text(
                   recognizedText.isEmpty
                       ? '말씀해주세요...'
