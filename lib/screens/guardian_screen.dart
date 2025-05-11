@@ -157,18 +157,18 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       showDialog(
         context: context,
         builder: (_) {
-          final TextEditingController _idController = TextEditingController();
+          final TextEditingController idController = TextEditingController();
           return AlertDialog(
             title: const Text('시각장애인 고유번호 입력'),
             content: TextField(
-              controller: _idController,
+              controller: idController,
               decoration: const InputDecoration(hintText: '고유번호를 입력하세요'),
             ),
             actions: [
               TextButton(
                 // ✅ 고유번호 등록 시 Firestore에 연결 정보 저장
                 onPressed: () async {
-                  final code = _idController.text.trim();
+                  final code = idController.text.trim();
                   if (code.isEmpty) return;
 
                   try {
