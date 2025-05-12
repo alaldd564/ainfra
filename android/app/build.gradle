@@ -26,7 +26,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.ai_n_fra"
-        minSdk = 23
+        minSdkVersion 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -53,6 +53,7 @@ dependencies {
     implementation("io.flutter:flutter_embedding_debug:1.0.0-")
     implementation name: 'tmap-sdk-2.1', ext: 'aar'
     implementation name: 'vsm-tmap-sdk-v2-android-1.7.23', ext: 'aar'
+    implementation 'com.google.android.material:material:1.11.0' // ✅ 최신 Material Components 라이브러리
 }
 
 flutter {

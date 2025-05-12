@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart'; // ✅ 도로명 주소 변환용 패키지 추가
+import 'package:geocoding/geocoding.dart';
 
 class TopTaxiScreen extends StatefulWidget {
   const TopTaxiScreen({super.key});
@@ -13,11 +13,28 @@ class TopTaxiScreen extends StatefulWidget {
 
 class TopTaxiScreenState extends State<TopTaxiScreen> {
   final FlutterTts _flutterTts = FlutterTts();
-
-  final String disabilityTaxiPhone = 'tel:12341234'; // 장애인 택시 전화번호
-  final String kakaoTaxiAppScheme = 'kakaotaxi://'; // 카카오택시 앱 호출 URI
+  final String kakaoTaxiAppScheme = 'kakaotaxi://';
 
   bool _firstDoubleTapConfirmed = false;
+
+  final Map<String, String> taxiPhoneNumbers = {
+    '서울특별시': 'tel:1588-4388',
+    '부산광역시': 'tel:051-1588-8808',
+    '대구광역시': 'tel:053-628-4000',
+    '인천광역시': 'tel:032-430-7982',
+    '광주광역시': 'tel:062-600-9444',
+    '대전광역시': 'tel:042-825-7777',
+    '울산광역시': 'tel:1899-0006',
+    '경기도': 'tel:1544-1230',
+    '강원특별자치도': 'tel:033-241-0001',
+    '충청북도': 'tel:043-215-7982',
+    '충청남도': 'tel:041-1577-8255',
+    '전라북도': 'tel:063-212-0001',
+    '전라남도': 'tel:061-276-2255',
+    '경상북도': 'tel:054-842-8255',
+    '경상남도': 'tel:055-237-8000',
+    '제주특별자치도': 'tel:064-759-0000',
+  };
 
   Future<void> _callTaxi(String phoneNumber) async {
     if (await canLaunchUrl(Uri.parse(phoneNumber))) {
@@ -62,8 +79,7 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
     }
   }
 
-  // ✅ 도로명 주소 안내를 포함한 현재 위치 안내 함수
-  Future<void> _speakCurrentLocation() async {
+  Future<void> _getLocationAndCallTaxi() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       await _speakText('위치 서비스가 꺼져 있습니다. 설정에서 활성화해주세요.');
@@ -87,14 +103,12 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
     Position position = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
     );
-    debugPrint('📍 위도: ${position.latitude}, 경도: ${position.longitude}');
 
     try {
-      // ✅ 좌표를 도로명 주소로 변환
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
-        localeIdentifier: 'ko', // 한국어 주소
+        localeIdentifier: 'ko',
       );
 
       if (placemarks.isNotEmpty) {
@@ -102,7 +116,21 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
         final String address =
             '${place.street}, ${place.locality}, ${place.administrativeArea}';
         debugPrint('📍 주소: $address');
+
+        // 현재 위치 음성 안내
         await _speakText('현재 위치는 $address입니다.');
+
+        // 해당 지역의 장애인 택시 전화 연결
+        final String region = place.administrativeArea ?? '';
+        final String? phoneNumber = taxiPhoneNumbers[region];
+
+        if (phoneNumber != null) {
+          await _speakText('$region 장애인 콜택시로 연결합니다.');
+          await Future.delayed(const Duration(seconds: 1));
+          await _callTaxi(phoneNumber);
+        } else {
+          await _speakText('$region 지역의 콜택시 번호를 찾을 수 없습니다.');
+        }
       } else {
         await _speakText('주소를 찾을 수 없습니다.');
       }
@@ -114,9 +142,7 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
 
   void _handleSwipeDown() async {
     debugPrint('📞 아래로 스와이프 감지: 장애인 택시 호출');
-    await _speakCurrentLocation(); // ✅ 도로명 주소로 위치 안내
-    await Future.delayed(const Duration(seconds: 2));
-    await _callTaxi(disabilityTaxiPhone);
+    await _getLocationAndCallTaxi();
   }
 
   @override
@@ -124,7 +150,9 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
     super.initState();
     _flutterTts.setLanguage('ko-KR');
     _flutterTts.setSpeechRate(0.5);
-    _speakText('장애인 택시와 카카오택시를 호출할 수 있습니다. 아래로 스와이프하거나 두 번 탭하세요.');
+    _speakText(
+      '장애인 택시와 카카오택시를 호출할 수 있습니다. 장애인 콜택시를 부르시려면 아래로 스와이프를, 카카오택시를 부르시려면 두 번 탭해주세요.',
+    );
   }
 
   @override
@@ -133,19 +161,16 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(title: const Text('택시 호출'), backgroundColor: Colors.green),
       body: GestureDetector(
-        behavior: HitTestBehavior.opaque, // ✅ 터치 이벤트 확실히 감지
+        behavior: HitTestBehavior.opaque,
         onDoubleTap: _onDoubleTap,
         onVerticalDragUpdate: (details) {
           if (details.primaryDelta != null && details.primaryDelta! > 20) {
-            _handleSwipeDown(); // ✅ 장애인 택시 호출
+            _handleSwipeDown();
           }
-        },
-        onTap: () {
-          _speakText('장애인택시와 카카오택시를 호출할 수 있습니다. 아래로 스와이프하거나 두 번 탭하세요.');
         },
         child: const Center(
           child: Text(
-            '장애인택시와 카카오택시를 \n호출할 수 있습니다.\n\n아래로 스와이프하거나 두 번 탭하세요.',
+            '장애인택시와 카카오택시를 \n호출할 수 있습니다.\n\n장애인 콜택시를 부르시려면\n아래로 스와이프\n카카오택시를 부르시려면\n두 번 탭해주세요.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white, fontSize: 20),
           ),
