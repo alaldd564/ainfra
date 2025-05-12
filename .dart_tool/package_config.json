@@ -615,10 +615,14 @@
     }
   ],
 <<<<<<< HEAD
+<<<<<<< HEAD
   "generated": "2025-05-11T12:13:18.387372Z",
 =======
   "generated": "2025-05-11T11:42:25.769050Z",
 >>>>>>> 29c6e1331e9bc8a5323db2431a937137f155c2a7
+=======
+  "generated": "2025-05-11T12:59:32.082504Z",
+>>>>>>> ee4a2e74b244eace1517f5e0e926ed89a3954c93
   "generator": "pub",
   "generatorVersion": "3.7.2",
   "flutterRoot": "file:///C:/src/flutter",
