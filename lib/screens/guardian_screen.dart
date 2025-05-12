@@ -27,7 +27,18 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       _getCurrentLocation();
       _initFCM(); // FCM 초기화 추가
       _checkPendingSos(); // 실행 시 SOS 확인 추가
+      _saveFcmToken();
     });
+  }
+
+  Future<void> _saveFcmToken() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final token = await FirebaseMessaging.instance.getToken();
+    if (uid != null && token != null) {
+      await FirebaseFirestore.instance.collection('guardians').doc(uid).set({
+        'fcm_token': token,
+      }, SetOptions(merge: true));
+    }
   }
 
   // Firebase Cloud Messaging 수신 및 팝업 알림 표시
