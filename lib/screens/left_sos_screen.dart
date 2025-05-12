@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 class LeftSosScreen extends StatefulWidget {
   const LeftSosScreen({super.key});
@@ -13,6 +14,16 @@ class LeftSosScreen extends StatefulWidget {
 
 class _LeftSosScreenState extends State<LeftSosScreen> {
   bool _isSending = false;
+
+  // ✅ 음성 안내 객체
+  final FlutterTts _flutterTts = FlutterTts();
+
+  // ✅ 음성 출력 함수
+  Future<void> _speak(String message) async {
+    await _flutterTts.setLanguage('ko-KR');
+    await _flutterTts.setSpeechRate(0.5); // 느리게 말하게
+    await _flutterTts.speak(message);
+  }
 
   // ✅ Firebase Cloud Messaging 서버 키 (네트워크 요청에 필요)
   static const String _serverKey = 'YOUR_FIREBASE_SERVER_KEY';
@@ -66,12 +77,14 @@ class _LeftSosScreenState extends State<LeftSosScreen> {
       });
 
       await _sendFcmToLinkedGuardians(blindUid);
+      await _speak('SOS 신고가 접수되었습니다.'); // ✅ 성공 시 안내
 
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('긴급신호 전송 완료')));
     } catch (e) {
+      await _speak('전송에 실패했습니다.'); // ✅ 실패 시 안내
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -81,6 +94,12 @@ class _LeftSosScreenState extends State<LeftSosScreen> {
         setState(() => _isSending = false);
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _flutterTts.stop(); // ✅ 리소스 정리
+    super.dispose();
   }
 
   @override
