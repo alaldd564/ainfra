@@ -43,6 +43,7 @@ class MyApp extends StatelessWidget {
           200,
           settings.saturation,
           settings.lightness,
+          // ignore: deprecated_member_use
         ).toColor().withOpacity(settings.brightness);
 
         return MaterialApp(

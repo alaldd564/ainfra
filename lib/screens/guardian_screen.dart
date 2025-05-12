@@ -27,7 +27,18 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       _getCurrentLocation();
       _initFCM(); // FCM 초기화 추가
       _checkPendingSos(); // 실행 시 SOS 확인 추가
+      _saveFcmToken();
     });
+  }
+
+  Future<void> _saveFcmToken() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final token = await FirebaseMessaging.instance.getToken();
+    if (uid != null && token != null) {
+      await FirebaseFirestore.instance.collection('guardians').doc(uid).set({
+        'fcm_token': token,
+      }, SetOptions(merge: true));
+    }
   }
 
   // Firebase Cloud Messaging 수신 및 팝업 알림 표시
@@ -157,18 +168,18 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       showDialog(
         context: context,
         builder: (_) {
-          final TextEditingController _idController = TextEditingController();
+          final TextEditingController idController = TextEditingController();
           return AlertDialog(
             title: const Text('시각장애인 고유번호 입력'),
             content: TextField(
-              controller: _idController,
+              controller: idController,
               decoration: const InputDecoration(hintText: '고유번호를 입력하세요'),
             ),
             actions: [
               TextButton(
                 // ✅ 고유번호 등록 시 Firestore에 연결 정보 저장
                 onPressed: () async {
-                  final code = _idController.text.trim();
+                  final code = idController.text.trim();
                   if (code.isEmpty) return;
 
                   try {
@@ -201,6 +212,12 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                           'linked_user_code': code,
                           'linked_user_uid': blindData['uid'],
                         }, SetOptions(merge: true));
+
+                    // ✅ 시각장애인 문서에도 보호자 UID 저장 (양방향 연동)
+                    await FirebaseFirestore.instance
+                        .collection('blind_users')
+                        .doc(code)
+                        .update({'user_key': guardianUid});
 
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('고유번호가 등록되었습니다.')),
