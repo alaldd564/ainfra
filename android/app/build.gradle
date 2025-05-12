@@ -8,6 +8,9 @@ plugins {
 repositories {
     google()
     mavenCentral()
+    flatDir {
+        dirs 'libs'
+    }
 }
 
 android {
@@ -43,17 +46,14 @@ android {
     }
 }
 
-repositories {
-    flatDir {
-        dirs 'libs'
-    }
-}
 
 dependencies {
     implementation("io.flutter:flutter_embedding_debug:1.0.0-")
     implementation name: 'tmap-sdk-2.1', ext: 'aar'
     implementation name: 'vsm-tmap-sdk-v2-android-1.7.23', ext: 'aar'
     implementation 'com.google.android.material:material:1.11.0' // ✅ 최신 Material Components 라이브러리
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 }
 
 flutter {
