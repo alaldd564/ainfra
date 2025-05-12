@@ -1,44 +1,50 @@
 plugins {
-    id("com.android.application")
-    id("kotlin-android")
-    id("dev.flutter.flutter-gradle-plugin")
-    id("com.google.gms.google-services") // ✅ Firebase 연동
-}
-
-repositories {
-    google()
-    mavenCentral()
+    id 'com.android.application'
+    id 'kotlin-android'
+    id 'com.google.gms.google-services'
+    id 'dev.flutter.flutter-gradle-plugin'
 }
 
 android {
-    namespace = "com.example.ai_n_fra"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
+    namespace "com.example.ai_n_fra"
+    compileSdkVersion 35 // ✅ 권장값 (Flutter 3.22 이상 기준)
+    ndkVersion "27.0.12077973"
+
+    defaultConfig {
+        applicationId "com.example.ai_n_fra"
+        minSdkVersion 24
+        targetSdkVersion 35
+        versionCode 1
+        versionName "1.0"
+    }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
-    }
-
-    defaultConfig {
-        applicationId = "com.example.ai_n_fra"
-        minSdk = 23
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        jvmTarget = "11"
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+
+    // 로컬 AAR 설정
+    repositories {
+        flatDir {
+            dirs 'libs'
         }
     }
 }
 
-flutter {
-    source = "../.."
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.7.10"
+    implementation "com.google.android.material:material:1.11.0"
+    implementation(name: "tmap-sdk-2.1", ext: "aar")
+    implementation(name: "vsm-tmap-sdk-v2-android-1.7.23", ext: "aar")
 }
