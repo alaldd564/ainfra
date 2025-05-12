@@ -39,7 +39,7 @@
 #     )
 #     user_prompt = f"현재 위치: {current_pos if current_pos else '알 수 없음'}, 다음 경로: {step_desc}"
 #     payload = {
-#         "model": "sonar-medium-online",
+#         "model": "sonar",
 #         "messages": [
 #             {"role": "system", "content": system_prompt},
 #             {"role": "user", "content": user_prompt}
