@@ -12,6 +12,8 @@ import 'package:ainfra/screens/right_settings_screen.dart'; // 밝기/채도/명
 import 'package:provider/provider.dart';
 import 'package:ainfra/screens/brightness_settings.dart';
 // 반드시 이 파일 import
+import 'screens/bottom_naviate_screen_test.dart';
+import 'services/tmap_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

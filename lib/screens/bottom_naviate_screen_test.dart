@@ -1,65 +1,69 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_naver_map/flutter_naver_map.dart';
+import 'package:latlong2/latlong.dart'; // 경로 좌표를 나타내는 데 필요한 패키지
+import 'tmap_api.dart'; // TMapApi 임포트
 
-const String tmapViewType = 'com.example.ai_n_fra/tmap_view';
-
-class TmapViewWidget extends StatefulWidget {
-  final String apiKey;
-
-  const TmapViewWidget({Key? key, required this.apiKey}) : super(key: key);
+class BottomNaviateScreenTest extends StatefulWidget {
+  const BottomNaviateScreenTest({Key? key}) : super(key: key);
 
   @override
-  _TmapViewWidgetState createState() => _TmapViewWidgetState();
+  _BottomNaviateScreenTestState createState() => _BottomNaviateScreenTestState();
 }
 
-class _TmapViewWidgetState extends State<TmapViewWidget> {
-  MethodChannel? _channel;
+class _BottomNaviateScreenTestState extends State<BottomNaviateScreenTest> {
+  List<LatLng> routeCoordinates = [];
 
   @override
-  Widget build(BuildContext context) {
-    return AndroidView(
-      viewType: tmapViewType,
-      creationParams: <String, dynamic>{'apiKey': widget.apiKey},
-      creationParamsCodec: const StandardMessageCodec(),
-      onPlatformViewCreated: (int id) {
-        _channel = MethodChannel('${tmapViewType}_$id');
-        _onTmapViewCreated(id);
-      },
-    );
+  void initState() {
+    super.initState();
+    _fetchRoute();
   }
 
-  void _onTmapViewCreated(int id) {
-    debugPrint('TmapPlatformView created with id: $id');
-  }
+  Future<void> _fetchRoute() async {
+    TMapApi tMapApi = TMapApi();
+    double startX = 126.9780;  // 출발지 경도 (예시)
+    double startY = 37.5665;  // 출발지 위도 (예시)
+    double endX = 126.9810;   // 도착지 경도 (예시)
+    double endY = 37.5700;    // 도착지 위도 (예시)
 
-}
-
-class MapScreen extends StatelessWidget {
-  final String yourTmapApiKey = "NsxOESGJ823yk2Nyvwcf15sSqaYMBXlw1L4UBmoa";
-
-  @override
-  Widget build(BuildContext context) {
-    if (yourTmapApiKey == "발급받은키(appKey)" || yourTmapApiKey.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: Text('Tmap Flutter Example')),
-        body: Center(
-          child: Text(
-            'Tmap API 키를 입력해주세요.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.red, fontSize: 18),
-          ),
-        ),
-      );
+    try {
+      var routeData = await tMapApi.getPedestrianRoute(startX, startY, endX, endY);
+      var path = routeData['features'][0]['geometry']['coordinates'];
+      setState(() {
+        routeCoordinates = path.map<LatLng>((coord) {
+          return LatLng(coord[1], coord[0]);
+        }).toList();
+      });
+    } catch (e) {
+      print('Error fetching route: $e');
     }
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Tmap Flutter Example')),
-      body: Center(
-        child: Container(
-          width: double.infinity,
-          height: 400,
-          child: TmapViewWidget(apiKey: yourTmapApiKey),
+      appBar: AppBar(
+        title: Text('Pedestrian Route'),
+      ),
+      body: NaverMap(
+        initialCameraPosition: CameraPosition(
+          target: LatLng(37.5665, 126.9780), // 서울의 경도, 위도
+          zoom: 14.0,
         ),
+        mapType: NaverMapType.Basic,
+        markers: routeCoordinates.map((coord) {
+          return Marker(
+            markerId: coord.toString(),
+            position: coord,
+          );
+        }).toSet(),
+        polylines: {
+          Polyline(
+            points: routeCoordinates,
+            color: Colors.blue,
+            width: 4,
+          ),
+        },
       ),
     );
   }
