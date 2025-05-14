@@ -16,6 +16,7 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
   final String kakaoTaxiAppScheme = 'kakaotaxi://';
 
   bool _firstDoubleTapConfirmed = false;
+  String? _nextPhoneNumber; // TTS 완료 후 연결할 번호 저장용
 
   final Map<String, String> taxiPhoneNumbers = {
     '서울특별시': 'tel:1588-4388',
@@ -113,21 +114,21 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
 
       if (placemarks.isNotEmpty) {
         final Placemark place = placemarks.first;
+        final String street = place.street ?? '';
+        final String subLocality = place.subLocality ?? '';
+        final String locality = place.locality ?? '';
+        final String administrativeArea = place.administrativeArea ?? '';
         final String address =
-            '${place.street}, ${place.locality}, ${place.administrativeArea}';
-        debugPrint('📍 주소: $address');
+            '$administrativeArea $locality $subLocality $street';
 
-        // 현재 위치 음성 안내
-        await _speakText('현재 위치는 $address입니다.');
+        debugPrint('📍 도로명 주소: $address');
 
-        // 해당 지역의 장애인 택시 전화 연결
-        final String region = place.administrativeArea ?? '';
+        final String region = administrativeArea;
         final String? phoneNumber = taxiPhoneNumbers[region];
 
         if (phoneNumber != null) {
-          await _speakText('$region 장애인 콜택시로 연결합니다.');
-          await Future.delayed(const Duration(seconds: 1));
-          await _callTaxi(phoneNumber);
+          _nextPhoneNumber = phoneNumber;
+          await _speakText('현재 위치는 $address 입니다.');
         } else {
           await _speakText('$region 지역의 콜택시 번호를 찾을 수 없습니다.');
         }
@@ -150,6 +151,23 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
     super.initState();
     _flutterTts.setLanguage('ko-KR');
     _flutterTts.setSpeechRate(0.5);
+
+    // TTS 완료 후 전화 연결
+    _flutterTts.setCompletionHandler(() async {
+      debugPrint('🗣️ TTS 완료됨');
+      if (_nextPhoneNumber != null) {
+        final String regionName =
+            taxiPhoneNumbers.entries
+                .firstWhere((entry) => entry.value == _nextPhoneNumber)
+                .key;
+
+        await _speakText('$regionName 장애인 콜택시로 연결합니다.');
+        await Future.delayed(const Duration(seconds: 1));
+        await _callTaxi(_nextPhoneNumber!);
+        _nextPhoneNumber = null;
+      }
+    });
+
     _speakText(
       '장애인 택시와 카카오택시를 호출할 수 있습니다. 장애인 콜택시를 부르시려면 아래로 스와이프를, 카카오택시를 부르시려면 두 번 탭해주세요.',
     );
