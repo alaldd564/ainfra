@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 class LLMNLGService {
   static const _apiUrl = "https://api.perplexity.ai/chat/completions";
-  static const _apiKey = "YOUR_PERPLEXITY_API_KEY"; // TODO: 안전하게 관리
+  static const _apiKey = "YOUR_PERPLEXITY_API_KEY"; // TO-DO : 안전하게 관리하기
 
   static Future<String> generateGuidance({
     required String stepDesc,

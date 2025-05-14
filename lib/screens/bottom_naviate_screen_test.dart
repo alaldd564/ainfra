@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
-import 'package:latlong2/latlong.dart'; // 경로 좌표를 나타내는 데 필요한 패키지
-import 'tmap_service.dart'; // TMapApi 임포트
+import '../services/tmap_service.dart';
 
 class BottomNaviateScreenTest extends StatefulWidget {
-  const BottomNaviateScreenTest({Key? key}) : super(key: key);
+  const BottomNaviateScreenTest({super.key});
 
   @override
-  _BottomNaviateScreenTestState createState() => _BottomNaviateScreenTestState();
+  State<BottomNaviateScreenTest> createState() => _BottomNaviateScreenTestState();
 }
 
 class _BottomNaviateScreenTestState extends State<BottomNaviateScreenTest> {
-  List<LatLng> routeCoordinates = [];
+  List<NLatLng> routeCoordinates = [];
+  NaverMapController? _mapController;
 
   @override
   void initState() {
@@ -20,50 +20,58 @@ class _BottomNaviateScreenTestState extends State<BottomNaviateScreenTest> {
   }
 
   Future<void> _fetchRoute() async {
-    TMapApi tMapApi = TMapApi();
-    double startX = 126.9780;  // 출발지 경도 (예시)
-    double startY = 37.5665;  // 출발지 위도 (예시)
-    double endX = 126.9810;   // 도착지 경도 (예시)
-    double endY = 37.5700;    // 도착지 위도 (예시)
+    final tMapApi = TMapApi();
+    const startX = 126.9780;
+    const startY = 37.5665;
+    const endX = 126.9810;
+    const endY = 37.5700;
 
     try {
-      var routeData = await tMapApi.getPedestrianRoute(startX, startY, endX, endY);
-      var path = routeData['features'][0]['geometry']['coordinates'];
-      setState(() {
-        routeCoordinates = path.map<LatLng>((coord) {
-          return LatLng(coord[1], coord[0]);
-        }).toList();
-      });
+      final routeData = await tMapApi.getPedestrianRoute(startX, startY, endX, endY);
+      final path = routeData['features'][0]['geometry']['coordinates'];
+      routeCoordinates = path.map<NLatLng>((coord) => NLatLng(coord[1], coord[0])).toList();
+
+      if (_mapController != null && routeCoordinates.isNotEmpty) {
+        // 지도 초기화 후 오버레이 추가
+        final overlay = NPathOverlay(
+          id: 'route',
+          coords: routeCoordinates,
+          width: 6,
+          color: Colors.blue,
+        );
+        await _mapController!.addOverlay(overlay);
+
+        for (final coord in routeCoordinates) {
+          await _mapController!.addOverlay(NMarker(
+            id: coord.toString(),
+            position: coord,
+          ));
+        }
+      }
+
+      setState(() {});
     } catch (e) {
-      print('Error fetching route: $e');
+      debugPrint('❌ 경로 가져오기 실패: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Pedestrian Route'),
-      ),
+      appBar: AppBar(title: const Text('보행자 경로 테스트')),
       body: NaverMap(
-        initialCameraPosition: CameraPosition(
-          target: LatLng(37.5665, 126.9780), // 서울의 경도, 위도
-          zoom: 14.0,
-        ),
-        mapType: NaverMapType.Basic,
-        markers: routeCoordinates.map((coord) {
-          return Marker(
-            markerId: coord.toString(),
-            position: coord,
-          );
-        }).toSet(),
-        polylines: {
-          Polyline(
-            points: routeCoordinates,
-            color: Colors.blue,
-            width: 4,
-          ),
+        onMapReady: (controller) async {
+          _mapController = controller;
+          await _fetchRoute(); // controller가 준비된 이후 실행
         },
+        options: NaverMapViewOptions(
+          initialCameraPosition: NCameraPosition(
+            target: routeCoordinates.isNotEmpty
+                ? routeCoordinates.first
+                : const NLatLng(37.5665, 126.9780),
+            zoom: 14,
+          ),
+        ),
       ),
     );
   }

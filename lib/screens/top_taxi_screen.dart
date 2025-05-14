@@ -16,7 +16,7 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
   final String kakaoTaxiAppScheme = 'kakaotaxi://';
 
   bool _firstDoubleTapConfirmed = false;
-  String? _nextPhoneNumber; // TTS 완료 후 연결할 번호 저장용
+  String? _nextPhoneNumber;
 
   final Map<String, String> taxiPhoneNumbers = {
     '서울특별시': 'tel:1588-4388',
@@ -38,22 +38,22 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
   };
 
   Future<void> _callTaxi(String phoneNumber) async {
-    if (await canLaunchUrl(Uri.parse(phoneNumber))) {
-      await launchUrl(Uri.parse(phoneNumber));
+    final uri = Uri.parse(phoneNumber);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
     } else {
       debugPrint('전화 연결 실패');
     }
   }
 
   Future<void> _launchKakaoTaxiApp() async {
-    if (await canLaunchUrl(Uri.parse(kakaoTaxiAppScheme))) {
-      await launchUrl(Uri.parse(kakaoTaxiAppScheme));
+    final uri = Uri.parse(kakaoTaxiAppScheme);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
     } else {
       debugPrint('카카오택시 앱이 설치되지 않았습니다. 앱 스토어로 이동합니다.');
       await launchUrl(
-        Uri.parse(
-          'https://play.google.com/store/apps/details?id=com.kakao.taxi',
-        ),
+        Uri.parse('https://play.google.com/store/apps/details?id=com.kakao.taxi'),
       );
     }
   }
@@ -68,21 +68,16 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
     if (!_firstDoubleTapConfirmed) {
       debugPrint('👆 첫 번째 두 번 탭 감지');
       await _speakText('카카오택시를 부르시겠습니까? 맞으시면 화면을 두 번 터치해주세요.');
-      setState(() {
-        _firstDoubleTapConfirmed = true;
-      });
+      setState(() => _firstDoubleTapConfirmed = true);
     } else {
       debugPrint('✅ 두 번째 두 번 탭: 카카오택시 실행');
       await _launchKakaoTaxiApp();
-      setState(() {
-        _firstDoubleTapConfirmed = false;
-      });
+      setState(() => _firstDoubleTapConfirmed = false);
     }
   }
 
   Future<void> _getLocationAndCallTaxi() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
+    if (!await Geolocator.isLocationServiceEnabled()) {
       await _speakText('위치 서비스가 꺼져 있습니다. 설정에서 활성화해주세요.');
       return;
     }
@@ -101,30 +96,25 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
       return;
     }
 
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
+    final position = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
 
     try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(
+      final placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
         localeIdentifier: 'ko',
       );
 
       if (placemarks.isNotEmpty) {
-        final Placemark place = placemarks.first;
-        final String street = place.street ?? '';
-        final String subLocality = place.subLocality ?? '';
-        final String locality = place.locality ?? '';
-        final String administrativeArea = place.administrativeArea ?? '';
-        final String address =
-            '$administrativeArea $locality $subLocality $street';
+        final place = placemarks.first;
+        final address = '${place.administrativeArea ?? ''} ${place.locality ?? ''} ${place.subLocality ?? ''} ${place.street ?? ''}';
 
         debugPrint('📍 도로명 주소: $address');
 
-        final String region = administrativeArea;
-        final String? phoneNumber = taxiPhoneNumbers[region];
+        final region = place.administrativeArea;
+        final phoneNumber = taxiPhoneNumbers[region];
 
         if (phoneNumber != null) {
           _nextPhoneNumber = phoneNumber;
@@ -141,10 +131,7 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
     }
   }
 
-  void _handleSwipeDown() async {
-    debugPrint('📞 아래로 스와이프 감지: 장애인 택시 호출');
-    await _getLocationAndCallTaxi();
-  }
+  void _handleSwipeDown() => _getLocationAndCallTaxi();
 
   @override
   void initState() {
@@ -152,14 +139,13 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
     _flutterTts.setLanguage('ko-KR');
     _flutterTts.setSpeechRate(0.5);
 
-    // TTS 완료 후 전화 연결
     _flutterTts.setCompletionHandler(() async {
       debugPrint('🗣️ TTS 완료됨');
       if (_nextPhoneNumber != null) {
-        final String regionName =
-            taxiPhoneNumbers.entries
-                .firstWhere((entry) => entry.value == _nextPhoneNumber)
-                .key;
+        final regionName = taxiPhoneNumbers.entries.firstWhere(
+          (entry) => entry.value == _nextPhoneNumber,
+          orElse: () => const MapEntry('해당 지역', ''),
+        ).key;
 
         await _speakText('$regionName 장애인 콜택시로 연결합니다.');
         await Future.delayed(const Duration(seconds: 1));

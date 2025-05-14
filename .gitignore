@@ -21,6 +21,9 @@ build/
 .packages
 .pub-cache/
 generated_plugin_registrant.*
+.idea/
+venv/
+
 
 # --- Android outputs (APK, AAB 등) ---
 *.apk

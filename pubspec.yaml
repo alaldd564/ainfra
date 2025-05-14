@@ -20,7 +20,7 @@ dependencies:
 
   # Flutter plugins
   flutter_tts: ^4.2.2
-  flutter_naver_map: ^1.0.0
+  flutter_naver_map: ^1.1.2
   geolocator: ^14.0.0
   geocoding : ^2.1.0
   permission_handler: ^11.3.0
