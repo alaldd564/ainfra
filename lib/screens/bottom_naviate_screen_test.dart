@@ -1,201 +1,261 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_tts/flutter_tts.dart';
+import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'dart:async';
-import 'dart:io';
+import 'package:geocoding/geocoding.dart';
 
-const String tmapViewType = 'com.example.ai_n_fra/tmapView';
-const String tmapMethodChannel = 'com.example.ai_n_fra/tmapMethod';
-
-class BottomNavigateScreen extends StatefulWidget {
-  const BottomNavigateScreen({super.key});
-
-  @override
-  State<BottomNavigateScreen> createState() => _BottomNavigateScreenState();
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const MyApp());
 }
 
-class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
-  final FlutterTts _tts = FlutterTts();
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
-  String recognizedText = ''; // 임시 목적지 텍스트
-  bool showMap = false; // 지도 표시 상태
-  Position? _currentPosition; // 현재 위치
-  // 네이티브 T Map 뷰와 통신할 MethodChannel 인스턴스
-  late MethodChannel _methodChannel;
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Minimal Naver Map Test',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      home: const MapScreen(),
+    );
+  }
+}
+
+class MapScreen extends StatefulWidget {
+  const MapScreen({super.key});
+
+  @override
+  State<MapScreen> createState() => _MapScreenState();
+}
+
+class _MapScreenState extends State<MapScreen> {
+  NaverMapController? _mapController;
+  LatLng? _currentLocation;
+  LatLng? _destinationLocation;
+  final TextEditingController _searchController = TextEditingController();
+  final List<NMarker> _markers = [];
 
   @override
   void initState() {
     super.initState();
-    // 네이티브와 통신할 MethodChannel 초기화
-    _methodChannel = const MethodChannel(tmapMethodChannel);
-
-    _speak('목적지를 말씀해주세요.');
-    _fakeRecognition(); // 실제 음성 인식 대신 임시 텍스트 사용
-    _getCurrentLocation(); // 현재 위치 가져오기 시작
+    _getCurrentLocation(); // 위젯 초기화 시 현재 위치 불러오기
   }
 
   @override
   void dispose() {
+    _searchController.dispose();
+    _mapController?.dispose();
     super.dispose();
   }
 
-
-  Future<void> _speak(String text) async {
-    await _tts.setLanguage("ko-KR");
-    await _tts.setSpeechRate(0.5);
-    await _tts.speak(text);
-  }
-
-  // 음성 인식 없이 임시 텍스트 처리
-  void _fakeRecognition() {
-    Future.delayed(const Duration(seconds: 1), () {
-      setState(() {
-        recognizedText = '서울역'; // 원하는 임시 목적지 입력
-      });
-      _speak('$recognizedText이 맞으시다면 화면을 두 번 터치해주세요.');
-    });
-  }
-
+  // 현재 위치 불러오기
   Future<void> _getCurrentLocation() async {
-    final status = await Permission.location.request();
+    bool serviceEnabled;
+    LocationPermission permission;
 
-    if (status.isGranted) {
-      try {
-        final position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
+    // 위치 서비스 활성화 여부 확인
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('위치 서비스를 활성화해주세요.')),
+        );
+      }
+      return;
+    }
+
+    // 위치 권한 확인
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('위치 권한이 필요합니다.')),
+          );
+        }
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('위치 권한이 거부되었습니다. 설정에서 변경해주세요.')),
+        );
+      }
+      return;
+    }
+
+    // 현재 위치 가져오기
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      setState(() {
+        _currentLocation = LatLng(position.latitude, position.longitude);
+      });
+
+      // 현재 위치로 지도 이동
+      if (_mapController != null && _currentLocation != null) {
+        _mapController!.updateCamera(
+          NCameraUpdate.fromCameraPosition(
+            NCameraPosition(target: _currentLocation!, zoom: 15),
           ),
         );
+      }
+    } catch (e) {
+      print('현재 위치를 불러오는 중 오류 발생: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('현재 위치를 불러오는데 실패했습니다.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _searchDestination(String address) async {
+    if (address.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('주소를 입력해주세요.')),
+        );
+      }
+      return;
+    }
+
+    try {
+      List<Location> locations = await geocoding.locationFromAddress(address);
+
+      if (locations.isNotEmpty) {
+        Location firstLocation = locations.first;
         setState(() {
-          _currentPosition = position;
-          print("Current Location: ${_currentPosition?.latitude}, ${_currentPosition?.longitude}");
+          _destinationLocation =
+              LatLng(firstLocation.latitude, firstLocation.longitude);
+          _addDestinationMarker();
         });
-      } catch (e) {
-        _speak('위치 정보를 가져오지 못했습니다.');
-        print("Error getting location: $e");
+
+        // 목적지로 지도 이동
+        if (_mapController != null && _destinationLocation != null) {
+          _mapController!.updateCamera(
+            NCameraUpdate.fromCameraPosition(
+              NCameraPosition(target: _destinationLocation!, zoom: 15),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('해당 주소를 찾을 수 없습니다.')),
+          );
+        }
       }
-    } else {
-      _speak('위치 권한이 필요합니다. 설정에서 허용해주세요.');
-      // 권한이 없는 경우 처리 (예: 설정 화면으로 이동 안내)
-    }
-  }
-
-  // 네이티브 T Map 뷰에 현재 위치를 전달하는 함수
-  void _sendLocationToNative(double latitude, double longitude) async {
-    // Android PlatformView가 생성되고 MethodChannel이 준비된 후에만 호출
-    if (Platform.isAndroid) {
-      try {
-        print("Sending current location to native: Lat $latitude, Lon $longitude");
-        await _methodChannel.invokeMethod('setUserLocation', {
-          'latitude': latitude,
-          'longitude': longitude,
-        });
-        print("Current location sent successfully.");
-      } on PlatformException catch (e) {
-        print("Failed to send current location to native: '${e.message}'.");
+    } catch (e) {
+      print('주소 검색 중 오류 발생: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('주소 검색에 실패했습니다.')),
+        );
       }
-    } else {
-      print("Platform is not Android, cannot send location via MethodChannel.");
     }
   }
 
-  /// 네이티브 T Map 뷰에 목적지 정보를 전달하는 함수 (새로 추가)
-  void _sendDestinationToNative(String destinationName) async {
-    // Android PlatformView가 생성되고 MethodChannel이 준비된 후에만 호출
-    if (Platform.isAndroid) {
-      try {
-        print("Sending destination to native: $destinationName");
-        await _methodChannel.invokeMethod('setDestination', {
-          'destinationName': destinationName,
-        });
-        print("Destination sent successfully.");
-      } on PlatformException catch (e) {
-        print("Failed to send destination to native: '${e.message}'.");
-      }
-    } else {
-      print("Platform is not Android, cannot send destination via MethodChannel.");
+  // 목적지 마커
+  void _addDestinationMarker() {
+    if (_destinationLocation == null) return;
+
+    _markers.removeWhere((marker) => marker.info.id == 'destination');
+
+    // 새 목적지 마커 생성 및 추가
+    final destinationMarker = NMarker(
+        id: 'destination',
+        position: _destinationLocation!,
+        caption: const NOverlayCaption(text: '목적지'),\
+    );
+
+    setState(() {
+      _markers.add(destinationMarker);
+    });
+    \
+    if (_mapController != null) {
+    _mapController!.updateMarkers(markers: _markers);
     }
   }
-
-
-  // AndroidView 생성 시 호출되는 콜백
-  void _onPlatformViewCreated(int id) {
-    print("AndroidView created with id: $id");
-    // 위치 정보가 이미 있다면 네이티브로 전달
-    if (_currentPosition != null) {
-      _sendLocationToNative(_currentPosition!.latitude, _currentPosition!.longitude);
-    }
-    // 지도 뷰가 생성되면 목적지 정보도 전달 (이미 인식된 경우)
-    if (recognizedText.isNotEmpty) {
-      _sendDestinationToNative(recognizedText);
-    }
-  }
-
 
   @override
   Widget build(BuildContext context) {
-    if (!Platform.isAndroid) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('길찾기')),
-        body: const Center(
-          child: Text('이 예제의 Tmap 기능은 Android에서만 작동함'),
-        ),
-      );
-    }
-
     return Scaffold(
-      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('경로 설정'),
-        backgroundColor: Colors.deepPurple,
+        title: const Text('Naver Map Test'),
       ),
-      body: showMap
-          ? (_currentPosition == null // 위치 정보를 가져오는 동안 로딩 표시
-          ? const Center(child: CircularProgressIndicator())
-          : buildTMapAndroidView() // 위치 정보를 가져왔으면 T Map 뷰 표시
-      )
-          : Center( // 목적지 확인 UI
-        child: GestureDetector(
-          onDoubleTap: () {
-            if (recognizedText.isEmpty) {
-              _speak('목적지가 입력되지 않았습니다.');
-              return; // 목적지 없으면 처리 중단
-            }
-            _speak('$recognizedText로 경로를 안내합니다.');
-            // 목적지 확인 후 지도 표시 상태로 변경
-            setState(() {
-              showMap = true;
-            });
-            _sendDestinationToNative(recognizedText);
-
-          },
-          child: Text(
-            recognizedText.isEmpty
-                ? '말씀해주세요...'
-                : '입력된 목적지: $recognizedText\n\n맞으면 두 번 탭하세요.',
-            style: const TextStyle(color: Colors.white, fontSize: 20),
-            textAlign: TextAlign.center,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                      hintText: '목적지를 입력하세요 (예: 서울역)',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12.0),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8.0),
+                ElevatedButton(
+                  onPressed: () {
+                    _searchDestination(_searchController.text);
+                  },
+                  child: const Text('검색'),
+                ),
+              ],
+            ),
           ),
-        ),
+          // 지도 위젯
+          Expanded(
+            child: NaverMap(
+              options: NaverMapViewOptions(
+                //기본 위치(서울 시청)
+                initialCameraPosition: NCameraPosition(
+                  target: _currentLocation ?? const LatLng(37.5665, 126.9780),
+                  zoom: 15,
+                ),
+                mapType: NMapType.basic,
+                buildingLayerGroup: NLayerGroup.building,
+                lightArticulationAndBuildingHeight: true,
+              ),
+              onMapReady: (controller) {
+                _mapController = controller;
+                if (_currentLocation != null) {
+                  _mapController!.updateCamera(
+                    NCameraUpdate.fromCameraPosition(
+                      NCameraPosition(target: _currentLocation!, zoom: 15),
+                    ),
+                  );
+                }
+              },
+              markers: _markers,
+            ),
+          ),
+          if (_currentLocation != null)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                  '현재 위치: ${_currentLocation!.latitude.toStringAsFixed(6)}, ${_currentLocation!.longitude.toStringAsFixed(6)}'),
+            ),
+          if (_destinationLocation != null)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                  '목적지 위치: ${_destinationLocation!.latitude.toStringAsFixed(6)}, ${_destinationLocation!.longitude.toStringAsFixed(6)}'),
+            ),
+        ],
       ),
-    );
-  }
-
-  // T Map 네이티브 AndroidView 위젯을 빌드합니다. // gpt왈 좀 더 이해가 필요한 부분분
-  Widget buildTMapAndroidView() {
-    return AndroidView(
-      viewType: tmapViewType, // 네이티브 PlatformViewFactory에 등록한 식별자
-      onPlatformViewCreated: _onPlatformViewCreated, // 네이티브 뷰 생성 완료 콜백
-      creationParams: <String, dynamic>{
-        // Optional: Initial location might be sent here too,
-        // but sending after _getCurrentLocation is more accurate.
-        // 'latitude': _currentPosition?.latitude ?? 37.5665,
-        // 'longitude': _currentPosition?.longitude ?? 126.9780,
-        // 'apiKey': 'NsxOESGJ823yk2Nyvwcf15sSqaYMBXlw1L4UBmoa',
-      },
-      creationParamsCodec: const StandardMessageCodec(),
     );
   }
 }

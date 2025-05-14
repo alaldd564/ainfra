@@ -19,14 +19,17 @@ class _LeftSosScreenState extends State<LeftSosScreen> {
 
   // ✅ 연동된 보호자만 필터해서 FCM 전송
   Future<void> _sendFcmToLinkedGuardians(String blindUid) async {
-    final snapshot = await FirebaseFirestore.instance
-        .collection('guardians')
-        .where('linked_user_uid', isEqualTo: blindUid)
-        .get();
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('guardians')
+            .where('linked_user_uid', isEqualTo: blindUid)
+            .get();
 
     for (var doc in snapshot.docs) {
-      final token = doc['fcm_token'];
-      if (token == null) continue;
+      final Map<String, dynamic> data = doc.data();
+      final token = data['fcm_token'];
+
+      if (token is! String || token.isEmpty) continue;
 
       final body = {
         'to': token,
@@ -65,14 +68,14 @@ class _LeftSosScreenState extends State<LeftSosScreen> {
       await _sendFcmToLinkedGuardians(blindUid);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('긴급신호 전송 완료')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('긴급신호 전송 완료')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('전송 실패: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('전송 실패: $e')));
     } finally {
       if (mounted) {
         setState(() => _isSending = false);
