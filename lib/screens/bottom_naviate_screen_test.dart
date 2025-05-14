@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:latlong2/latlong.dart'; // 경로 좌표를 나타내는 데 필요한 패키지
-import 'tmap_api.dart'; // TMapApi 임포트
+import 'tmap_service.dart'; // TMapApi 임포트
 
 class BottomNaviateScreenTest extends StatefulWidget {
   const BottomNaviateScreenTest({Key? key}) : super(key: key);
