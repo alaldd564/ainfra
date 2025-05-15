@@ -55,12 +55,12 @@ android {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:1.8.22"
-    implementation "io.flutter:flutter_embedding_debug:1.0.0"
     implementation name: "tmap-sdk-2.1", ext: "aar"
     implementation name: "vsm-tmap-sdk-v2-android-1.7.23", ext: "aar"
     implementation "com.google.android.material:material:1.11.0"
     implementation "androidx.appcompat:appcompat:1.6.1"
     implementation "androidx.constraintlayout:constraintlayout:2.1.4"
+    implementation "androidx.annotation:annotation:1.7.1"
 }
 
 flutter {
