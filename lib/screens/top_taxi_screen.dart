@@ -55,14 +55,18 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
         } else {
           debugPrint('카카오택시 앱 실행 실패, 스토어로 이동');
           await launchUrl(
-            Uri.parse('https://play.google.com/store/apps/details?id=com.kakao.taxi'),
+            Uri.parse(
+              'https://play.google.com/store/apps/details?id=com.kakao.taxi',
+            ),
             mode: LaunchMode.externalApplication,
           );
         }
       } else if (Platform.isIOS) {
         // iOS는 intent 지원 안 됨 → 앱 스토어 링크만 제공
         await launchUrl(
-          Uri.parse('https://apps.apple.com/kr/app/%EC%B9%B4%EC%B9%B4%EC%98%A4%ED%83%9D%EC%8B%9C/id981110422'),
+          Uri.parse(
+            'https://apps.apple.com/kr/app/%EC%B9%B4%EC%B9%B4%EC%98%A4%ED%83%9D%EC%8B%9C/id981110422',
+          ),
           mode: LaunchMode.externalApplication,
         );
       }
@@ -122,7 +126,8 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
 
       if (placemarks.isNotEmpty) {
         final place = placemarks.first;
-        final address = '${place.administrativeArea ?? ''} ${place.locality ?? ''} ${place.subLocality ?? ''} ${place.street ?? ''}';
+        final address =
+            '${place.administrativeArea ?? ''} ${place.locality ?? ''} ${place.subLocality ?? ''} ${place.street ?? ''}';
 
         debugPrint('📍 도로명 주소: $address');
 
@@ -155,10 +160,13 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
     _flutterTts.setCompletionHandler(() async {
       debugPrint('🗣️ TTS 완료됨');
       if (_nextPhoneNumber != null) {
-        final regionName = taxiPhoneNumbers.entries.firstWhere(
-          (entry) => entry.value == _nextPhoneNumber,
-          orElse: () => const MapEntry('해당 지역', ''),
-        ).key;
+        final regionName =
+            taxiPhoneNumbers.entries
+                .firstWhere(
+                  (entry) => entry.value == _nextPhoneNumber,
+                  orElse: () => const MapEntry('해당 지역', ''),
+                )
+                .key;
 
         await _speakText('$regionName 장애인 콜택시로 연결합니다.');
         await Future.delayed(const Duration(seconds: 1));
