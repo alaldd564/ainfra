@@ -1,4 +1,3 @@
-//import 'package:audio_player_interaction/sound_player.dart';
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -9,7 +8,6 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -31,10 +29,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final SpeechToText _speechToText = SpeechToText();
-  //final SoundPlayer _player = AudioSoundPlayer();
 
-  // ignore: unused_field
-  String _info = '';
   String _currentActivity = 'stopped';
   int _loopCount = 0;
   bool _inTest = false;
@@ -45,6 +40,11 @@ class _MyHomePageState extends State<MyHomePage> {
     _init();
   }
 
+  void _init() async {
+    await _speechToText.initialize(onError: _onError, onStatus: _onStatus);
+    setState(() {});
+  }
+
   void _loopTest() async {
     if (!_inTest) {
       setState(() {
@@ -52,24 +52,22 @@ class _MyHomePageState extends State<MyHomePage> {
       });
       return;
     }
-    _info = "***** Starting loop test ***** \n";
 
-    _info += "Open Audio Session\n";
-    String testAudioAsset = 'sounds/notification.m4r';
-    logIt('Playing $testAudioAsset');
-    //await _player.play(testAudioAsset, loop: false);
+    _currentActivity = 'listening';
+    _loopCount++;
+    _speechToText.listen(listenFor: Duration(seconds: 5));
 
-    _info += "Start Player\n";
-
-    setState(() {
-      _currentActivity = 'playing';
-    });
+    setState(() {});
   }
 
-  void _init() async {
-    _info += "Init speech\n";
-    await _speechToText.initialize(onError: _onError, onStatus: _onStatus);
-    //_player.onStop = _onPlayerStop;
+  void _onStatus(String status) async {
+    if (_inTest && status == SpeechToText.doneStatus) {
+      _loopTest();
+    }
+    setState(() {});
+  }
+
+  void _onError(SpeechRecognitionError errorNotification) {
     setState(() {});
   }
 
@@ -118,37 +116,5 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
     );
-  }
-
-  void _onStatus(String status) async {
-    logIt('onStatus: $status');
-    _info += "Speech Status: ${status}\n";
-    if (_inTest && status == SpeechToText.doneStatus) {
-      logIt('listener stopped');
-      // await _speechToText.stop();
-      // print('speech stopped');
-      _loopTest();
-    }
-    setState(() {});
-  }
-
-  void _onError(SpeechRecognitionError errorNotification) {
-    _info += "Error: ${errorNotification.errorMsg}\n";
-    setState(() {});
-  }
-
-  void _onPlayerStop() async {
-    logIt('Player stopped');
-    _currentActivity = 'listening';
-    ++_loopCount;
-    // await Future.delayed(Duration(seconds: 1));
-    _speechToText.listen(listenFor: Duration(seconds: 5));
-    setState(() {});
-  }
-
-  void logIt(String message) {
-    final now = DateTime.now();
-    debugPrint('SoundLoop: $now, $message');
-    _info += message + '\n';
   }
 }
