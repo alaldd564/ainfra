@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -13,7 +14,6 @@ class TopTaxiScreen extends StatefulWidget {
 
 class TopTaxiScreenState extends State<TopTaxiScreen> {
   final FlutterTts _flutterTts = FlutterTts();
-  final String kakaoTaxiAppScheme = 'kakaotaxi://';
 
   bool _firstDoubleTapConfirmed = false;
   String? _nextPhoneNumber;
@@ -47,14 +47,27 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
   }
 
   Future<void> _launchKakaoTaxiApp() async {
-    final uri = Uri.parse(kakaoTaxiAppScheme);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      debugPrint('카카오택시 앱이 설치되지 않았습니다. 앱 스토어로 이동합니다.');
-      await launchUrl(
-        Uri.parse('https://play.google.com/store/apps/details?id=com.kakao.taxi'),
-      );
+    try {
+      if (Platform.isAndroid) {
+        final uri = Uri.parse('intent://#Intent;package=com.kakao.taxi;end');
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          debugPrint('카카오택시 앱 실행 실패, 스토어로 이동');
+          await launchUrl(
+            Uri.parse('https://play.google.com/store/apps/details?id=com.kakao.taxi'),
+            mode: LaunchMode.externalApplication,
+          );
+        }
+      } else if (Platform.isIOS) {
+        // iOS는 intent 지원 안 됨 → 앱 스토어 링크만 제공
+        await launchUrl(
+          Uri.parse('https://apps.apple.com/kr/app/%EC%B9%B4%EC%B9%B4%EC%98%A4%ED%83%9D%EC%8B%9C/id981110422'),
+          mode: LaunchMode.externalApplication,
+        );
+      }
+    } catch (e) {
+      debugPrint('카카오택시 실행 중 오류: $e');
     }
   }
 
