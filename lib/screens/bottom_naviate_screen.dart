@@ -28,9 +28,18 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   @override
   void initState() {
     super.initState();
+    _requestMicrophonePermission(); // ✅ 추가됨: 마이크 권한 요청
     _speech = stt.SpeechToText(); // ✅ 초기화
     _initSpeechRecognition(); // ✅ 음성 인식 초기화 함수 호출
     _getCurrentLocation();
+  }
+
+  // ✅ 추가됨: 마이크 권한 요청 함수
+  Future<void> _requestMicrophonePermission() async {
+    final status = await Permission.microphone.request();
+    if (!status.isGranted) {
+      await _speak('마이크 권한이 필요합니다. 설정에서 허용해주세요.');
+    }
   }
 
   Future<void> _speak(String text) async {
