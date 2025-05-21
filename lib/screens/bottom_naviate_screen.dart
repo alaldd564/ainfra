@@ -3,6 +3,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'dart:async';
 
 class BottomNavigateScreen extends StatefulWidget {
@@ -20,27 +21,98 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   bool showMap = false;
   NLatLng? _currentLocation;
 
+  late stt.SpeechToText _speech;
+  bool _isTtsSpeaking = false;
+  bool _isReadyForDoubleTap = false;
+  bool _navigating = false; // 중복 실행 방지용
+
   @override
   void initState() {
     super.initState();
-    _speak('목적지를 말씀해주세요.');
-    _fakeRecognition(); // 실제 음성 인식 대신 임시 텍스트 사용
+
+    _tts.setLanguage("ko-KR");
+    _tts.setSpeechRate(0.5);
+
+    _tts.setStartHandler(() {
+      _isTtsSpeaking = true;
+    });
+
+    _tts.setCompletionHandler(() {
+      _isTtsSpeaking = false;
+    });
+
+    _speech = stt.SpeechToText();
+
+    _speakThen(() {
+      _initializeSpeech(); // TTS 끝나고 음성 인식 시작
+    }, '목적지를 말씀해주세요.');
+
     _getCurrentLocation();
   }
 
   Future<void> _speak(String text) async {
-    await _tts.setLanguage("ko-KR");
-    await _tts.setSpeechRate(0.5);
     await _tts.speak(text);
   }
 
-  // 🔧 음성 인식 없이 임시 텍스트 처리
-  void _fakeRecognition() {
-    Future.delayed(Duration(seconds: 1), () {
-      setState(() {
-        recognizedText = '서울역'; // 원하는 임시 목적지 입력
-      });
-      _speak('$recognizedText이 맞으시다면 화면을 두 번 터치해주세요.');
+  Future<void> _speakThen(Function callback, String text) async {
+    await _tts.speak(text);
+    while (_isTtsSpeaking) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    callback();
+  }
+
+  // ✅ STT 추가: 음성 인식 초기화
+  Future<void> _initializeSpeech() async {
+    bool available = await _speech.initialize(
+      onStatus: (status) {
+        print('STT status: $status');
+      },
+      onError: (error) => print('STT error: $error'),
+    );
+
+    if (available) {
+      _startListening(); // ✅ STT 추가
+    } else {
+      _speak('음성 인식을 사용할 수 없습니다.');
+    }
+  }
+
+  // ✅ STT 추가: 음성 인식 시작
+  void _startListening() {
+    _speech.listen(
+      onResult: (result) {
+        if (result.finalResult) {
+          recognizedText = result.recognizedWords;
+          _speech.stop();
+
+          _speakThen(() {
+            setState(() {
+              _isReadyForDoubleTap = true;
+            });
+          }, '$recognizedText이 맞으신가요? 맞으시다면 화면을 두 번 터치해주세요.');
+        }
+      },
+      localeId: 'ko_KR',
+      partialResults: true,
+      cancelOnError: false,
+      pauseFor: const Duration(seconds: 3),
+      listenFor: const Duration(seconds: 10),
+      listenMode: stt.ListenMode.dictation,
+    );
+  }
+
+  void _handleDoubleTap() async {
+    // ✅ 추가: 더블탭 핸들러 분리
+    if (_navigating ||
+        !_isReadyForDoubleTap ||
+        _isTtsSpeaking ||
+        recognizedText.isEmpty)
+      return;
+    _navigating = true;
+    await _speak('$recognizedText로 경로를 안내합니다.');
+    setState(() {
+      showMap = true;
     });
   }
 
@@ -73,38 +145,51 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
         title: const Text('경로 설정'),
         backgroundColor: Colors.deepPurple,
       ),
-      body: showMap
-          ? (_currentLocation == null
-              ? const Center(child: CircularProgressIndicator())
-              : NaverMap(
-                  onMapReady: (controller) {
-                    _mapController.complete(controller);
-                  },
-                  options: NaverMapViewOptions(
-                    initialCameraPosition: NCameraPosition(
-                      target: _currentLocation!,
-                      zoom: 16,
+      body:
+          showMap
+              ? (_currentLocation == null
+                  ? const Center(child: CircularProgressIndicator())
+                  : NaverMap(
+                    onMapReady: (controller) {
+                      _mapController.complete(controller);
+                    },
+                    options: NaverMapViewOptions(
+                      initialCameraPosition: NCameraPosition(
+                        target: _currentLocation!,
+                        zoom: 16,
+                      ),
+                      locationButtonEnable: true,
                     ),
-                    locationButtonEnable: true,
+                  ))
+              : Center(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque, // ✅ 추가: 빈 공간도 탭 인식
+                  onDoubleTap: _handleDoubleTap, // ✅ 수정: 별도 함수로 분리
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        recognizedText.isEmpty
+                            ? '말씀해주세요...'
+                            : '입력된 목적지: $recognizedText',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 20),
+                      if (_isReadyForDoubleTap &&
+                          !_isTtsSpeaking &&
+                          recognizedText.isNotEmpty) // ✅ 선택적 보조 버튼
+                        ElevatedButton(
+                          onPressed: _handleDoubleTap,
+                          child: const Text('경로 안내 시작'),
+                        ),
+                    ],
                   ),
-                ))
-          : Center(
-              child: GestureDetector(
-                onDoubleTap: () {
-                  _speak('$recognizedText로 경로를 안내합니다.');
-                  setState(() {
-                    showMap = true;
-                  });
-                },
-                child: Text(
-                  recognizedText.isEmpty
-                      ? '말씀해주세요...'
-                      : '입력된 목적지: $recognizedText',
-                  style: const TextStyle(color: Colors.white, fontSize: 20),
-                  textAlign: TextAlign.center,
                 ),
               ),
-            ),
     );
   }
 }
