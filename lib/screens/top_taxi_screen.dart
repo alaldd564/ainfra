@@ -14,7 +14,6 @@ class TopTaxiScreen extends StatefulWidget {
 
 class TopTaxiScreenState extends State<TopTaxiScreen> {
   final FlutterTts _flutterTts = FlutterTts();
-
   bool _firstDoubleTapConfirmed = false;
   String? _nextPhoneNumber;
 
@@ -37,48 +36,32 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
     '제주특별자치도': 'tel:064-759-0000',
   };
 
+  Future<void> _speakText(String text) async {
+    await _flutterTts.stop();
+    await _flutterTts.speak(text);
+    debugPrint('🗣️ TTS 실행됨: $text');
+  }
+
   Future<void> _callTaxi(String phoneNumber) async {
     final uri = Uri.parse(phoneNumber);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     } else {
       debugPrint('전화 연결 실패');
+      await _speakText('전화 연결에 실패했습니다.');
     }
   }
 
-  Future<void> _launchKakaoTaxiApp() async {
+  Future<void> _launchKakaoTLink() async {
+    final Uri url = Uri.parse(
+      'https://service.kakaomobility.com/launch/kakaot/',
+    );
     try {
-      if (Platform.isAndroid) {
-        final uri = Uri.parse('intent://#Intent;package=com.kakao.taxi;end');
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        } else {
-          debugPrint('카카오택시 앱 실행 실패, 스토어로 이동');
-          await launchUrl(
-            Uri.parse(
-              'https://play.google.com/store/apps/details?id=com.kakao.taxi',
-            ),
-            mode: LaunchMode.externalApplication,
-          );
-        }
-      } else if (Platform.isIOS) {
-        // iOS는 intent 지원 안 됨 → 앱 스토어 링크만 제공
-        await launchUrl(
-          Uri.parse(
-            'https://apps.apple.com/kr/app/%EC%B9%B4%EC%B9%B4%EC%98%A4%ED%83%9D%EC%8B%9C/id981110422',
-          ),
-          mode: LaunchMode.externalApplication,
-        );
-      }
+      await launchUrl(url, mode: LaunchMode.externalApplication);
     } catch (e) {
-      debugPrint('카카오택시 실행 중 오류: $e');
+      debugPrint('카카오T 링크 실행 중 오류: $e');
+      await _speakText('카카오택시를 실행하지 못했습니다. 앱이 설치되어 있는지 확인해주세요.');
     }
-  }
-
-  Future<void> _speakText(String text) async {
-    await _flutterTts.stop();
-    await _flutterTts.speak(text);
-    debugPrint('🗣️ TTS 실행됨: $text');
   }
 
   Future<void> _onDoubleTap() async {
@@ -88,8 +71,12 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
       setState(() => _firstDoubleTapConfirmed = true);
     } else {
       debugPrint('✅ 두 번째 두 번 탭: 카카오택시 실행');
-      await _launchKakaoTaxiApp();
-      setState(() => _firstDoubleTapConfirmed = false);
+      await _speakText('브라우저가 열립니다. 열기 버튼을 눌러 카카오택시를 실행하세요.');
+      await Future.delayed(const Duration(seconds: 1));
+      await _launchKakaoTLink();
+      setState(() {
+        _firstDoubleTapConfirmed = false;
+      });
     }
   }
 
@@ -131,8 +118,10 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
 
         debugPrint('📍 도로명 주소: $address');
 
-        final region = place.administrativeArea;
-        final phoneNumber = taxiPhoneNumbers[region];
+        await _speakText('현재 위치는 $address입니다.');
+
+        final String region = place.administrativeArea ?? '';
+        final String? phoneNumber = taxiPhoneNumbers[region];
 
         if (phoneNumber != null) {
           _nextPhoneNumber = phoneNumber;
