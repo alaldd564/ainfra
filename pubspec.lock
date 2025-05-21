@@ -552,6 +552,7 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.18.1"
+<<<<<<< HEAD
   js:
     dependency: transitive
     description:
@@ -560,6 +561,8 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.2"
+=======
+>>>>>>> recovered-stt
   json_annotation:
     dependency: transitive
     description:
@@ -568,6 +571,7 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.9.0"
+<<<<<<< HEAD
   latlong2:
     dependency: "direct main"
     description:
@@ -576,6 +580,8 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.8.2"
+=======
+>>>>>>> recovered-stt
   leak_tracker:
     dependency: transitive
     description:
@@ -873,6 +879,7 @@ packages:
     dependency: "direct main"
     description:
       name: speech_to_text
+<<<<<<< HEAD
       sha256: "97425fd8cc60424061a0584b6c418c0eedab5201cc5e96ef15a946d7fab7b9b7"
       url: "https://pub.dev"
     source: hosted
@@ -885,6 +892,12 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.0"
+=======
+      sha256: "6cf8f284997490ebef1d68f8707bef57dcf083f43c0f915cc285428520bfe6be"
+      url: "https://pub.dev"
+    source: hosted
+    version: "7.0.0"
+>>>>>>> recovered-stt
   speech_to_text_platform_interface:
     dependency: transitive
     description:
