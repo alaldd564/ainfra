@@ -13,8 +13,6 @@ class TopTaxiScreen extends StatefulWidget {
 
 class TopTaxiScreenState extends State<TopTaxiScreen> {
   final FlutterTts _flutterTts = FlutterTts();
-  final String kakaoTaxiAppScheme = 'kakaotaxi://';
-
   bool _firstDoubleTapConfirmed = false;
 
   final Map<String, String> taxiPhoneNumbers = {
@@ -36,31 +34,29 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
     '제주특별자치도': 'tel:064-759-0000',
   };
 
+  Future<void> _speakText(String text) async {
+    await _flutterTts.stop();
+    await _flutterTts.speak(text);
+    debugPrint('🗣️ TTS 실행됨: $text');
+  }
+
   Future<void> _callTaxi(String phoneNumber) async {
     if (await canLaunchUrl(Uri.parse(phoneNumber))) {
       await launchUrl(Uri.parse(phoneNumber));
     } else {
       debugPrint('전화 연결 실패');
+      await _speakText('전화 연결에 실패했습니다.');
     }
   }
 
-  Future<void> _launchKakaoTaxiApp() async {
-    if (await canLaunchUrl(Uri.parse(kakaoTaxiAppScheme))) {
-      await launchUrl(Uri.parse(kakaoTaxiAppScheme));
-    } else {
-      debugPrint('카카오택시 앱이 설치되지 않았습니다. 앱 스토어로 이동합니다.');
-      await launchUrl(
-        Uri.parse(
-          'https://play.google.com/store/apps/details?id=com.kakao.taxi',
-        ),
-      );
+  Future<void> _launchKakaoTLink() async {
+    final Uri url = Uri.parse('https://service.kakaomobility.com/launch/kakaot/');
+    try {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('카카오T 링크 실행 중 오류: $e');
+      await _speakText('카카오택시를 실행하지 못했습니다. 앱이 설치되어 있는지 확인해주세요.');
     }
-  }
-
-  Future<void> _speakText(String text) async {
-    await _flutterTts.stop();
-    await _flutterTts.speak(text);
-    debugPrint('🗣️ TTS 실행됨: $text');
   }
 
   Future<void> _onDoubleTap() async {
@@ -72,7 +68,9 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
       });
     } else {
       debugPrint('✅ 두 번째 두 번 탭: 카카오택시 실행');
-      await _launchKakaoTaxiApp();
+      await _speakText('브라우저가 열립니다. 열기 버튼을 눌러 카카오택시를 실행하세요.');
+      await Future.delayed(const Duration(seconds: 1));
+      await _launchKakaoTLink();
       setState(() {
         _firstDoubleTapConfirmed = false;
       });
@@ -117,10 +115,8 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
             '${place.street}, ${place.locality}, ${place.administrativeArea}';
         debugPrint('📍 주소: $address');
 
-        // 현재 위치 음성 안내
         await _speakText('현재 위치는 $address입니다.');
 
-        // 해당 지역의 장애인 택시 전화 연결
         final String region = place.administrativeArea ?? '';
         final String? phoneNumber = taxiPhoneNumbers[region];
 
