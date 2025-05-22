@@ -34,10 +34,6 @@ dependencies:
   intl: ^0.18.1
   latlong2: ^0.8.0
 
-  # speech_to_text:
-  #   path: plugins/speech_to_text
-  # audioplayers: ^5.2.1
-
 dev_dependencies:
   flutter_test:
     sdk: flutter

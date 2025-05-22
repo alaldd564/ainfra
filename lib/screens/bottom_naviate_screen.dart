@@ -21,56 +21,96 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   bool showMap = false;
   NLatLng? _currentLocation;
 
-  // ✅ 음성 인식 인스턴스 추가
   late stt.SpeechToText _speech;
-  bool _isSpeechAvailable = false;
+  bool _isTtsSpeaking = false;
+  bool _isReadyForDoubleTap = false;
+  bool _navigating = false;
 
   @override
   void initState() {
     super.initState();
-    _requestMicrophonePermission(); // ✅ 추가됨: 마이크 권한 요청
-    _speech = stt.SpeechToText(); // ✅ 초기화
-    _initSpeechRecognition(); // ✅ 음성 인식 초기화 함수 호출
+
+    _tts.setLanguage("ko-KR");
+    _tts.setSpeechRate(0.5);
+
+    _tts.setStartHandler(() {
+      _isTtsSpeaking = true;
+    });
+
+    _tts.setCompletionHandler(() {
+      _isTtsSpeaking = false;
+    });
+
+    _speech = stt.SpeechToText();
+
+    _speakThen(() {
+      _initializeSpeech();
+    }, '목적지를 말씀해주세요.');
+
     _getCurrentLocation();
   }
 
-  // ✅ 추가됨: 마이크 권한 요청 함수
-  Future<void> _requestMicrophonePermission() async {
-    final status = await Permission.microphone.request();
-    if (!status.isGranted) {
-      await _speak('마이크 권한이 필요합니다. 설정에서 허용해주세요.');
-    }
-  }
-
   Future<void> _speak(String text) async {
-    await _tts.setLanguage("ko-KR");
-    await _tts.setSpeechRate(0.5);
     await _tts.speak(text);
   }
 
-  // ✅ 실제 음성 인식을 수행하는 함수
-  Future<void> _initSpeechRecognition() async {
-    _isSpeechAvailable = await _speech.initialize(
-      onStatus: (val) => debugPrint('🎤 상태: $val'),
-      onError: (val) => debugPrint('🎤 오류: $val'),
+  Future<void> _speakThen(Function callback, String text) async {
+    await _tts.speak(text);
+    while (_isTtsSpeaking) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    callback();
+  }
+
+  Future<void> _initializeSpeech() async {
+    bool available = await _speech.initialize(
+      onStatus: (status) {
+        print('STT status: $status');
+      },
+      onError: (error) => print('STT error: $error'),
     );
 
-    if (_isSpeechAvailable) {
-      await _speak('목적지를 말씀해주세요.');
-      await _speech.listen(
-        localeId: 'ko_KR',
-        onResult: (val) {
-          if (val.finalResult) {
-            setState(() {
-              recognizedText = val.recognizedWords;
-            });
-            _speak('$recognizedText이 맞으시다면 화면을 두 번 터치해주세요.');
-          }
-        },
-      );
+    if (available) {
+      _startListening();
     } else {
-      _speak('음성 인식을 사용할 수 없습니다. 설정을 확인해주세요.');
+      _speak('음성 인식을 사용할 수 없습니다.');
     }
+  }
+
+  void _startListening() {
+    _speech.listen(
+      onResult: (result) {
+        if (result.finalResult) {
+          recognizedText = result.recognizedWords;
+          _speech.stop();
+
+          _speakThen(() {
+            setState(() {
+              _isReadyForDoubleTap = true;
+            });
+          }, '$recognizedText이 맞으신가요? 맞으시다면 화면을 두 번 터치해주세요.');
+        }
+      },
+      localeId: 'ko_KR',
+      partialResults: true,
+      cancelOnError: false,
+      pauseFor: const Duration(seconds: 3),
+      listenFor: const Duration(seconds: 10),
+      listenMode: stt.ListenMode.dictation,
+    );
+  }
+
+  void _handleDoubleTap() async {
+    if (_navigating ||
+        !_isReadyForDoubleTap ||
+        _isTtsSpeaking ||
+        recognizedText.isEmpty)
+      return;
+    _navigating = true;
+    await _speak('$recognizedText로 경로를 안내합니다.');
+    setState(() {
+      showMap = true;
+    });
   }
 
   Future<void> _getCurrentLocation() async {
@@ -120,18 +160,30 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                   ))
               : Center(
                 child: GestureDetector(
-                  onDoubleTap: () {
-                    _speak('$recognizedText로 경로를 안내합니다.');
-                    setState(() {
-                      showMap = true;
-                    });
-                  },
-                  child: Text(
-                    recognizedText.isEmpty
-                        ? '말씀해주세요...'
-                        : '입력된 목적지: $recognizedText',
-                    style: const TextStyle(color: Colors.white, fontSize: 20),
-                    textAlign: TextAlign.center,
+                  behavior: HitTestBehavior.opaque,
+                  onDoubleTap: _handleDoubleTap,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        recognizedText.isEmpty
+                            ? '말씀해주세요...'
+                            : '입력된 목적지: $recognizedText',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 20),
+                      if (_isReadyForDoubleTap &&
+                          !_isTtsSpeaking &&
+                          recognizedText.isNotEmpty)
+                        ElevatedButton(
+                          onPressed: _handleDoubleTap,
+                          child: const Text('경로 안내 시작'),
+                        ),
+                    ],
                   ),
                 ),
               ),
