@@ -10,11 +10,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8aca8bd5-5666-449b-b486-5dfb91f39f70" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/android/app/src/main/kotlin/com/example/ai_n_fra/MainActivity.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ai_n_fra.iml" beforeDir="false" afterPath="$PROJECT_DIR$/ai_n_fra.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/android/ai_n_fra_android.iml" beforeDir="false" afterPath="$PROJECT_DIR$/android/ai_n_fra_android.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/android/app/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/build.gradle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/android/app/libs/tmap-sdk-2.0.aar" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -72,7 +69,7 @@
     &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
     &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
     &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;TMapTest&quot;,
     &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
     &quot;last_opened_file_path&quot;: &quot;C:/flutter code/ainfra&quot;,
     &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;

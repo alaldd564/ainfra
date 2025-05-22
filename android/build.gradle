@@ -1,16 +1,10 @@
 buildscript {
-    ext.kotlin_version = "1.8.22"
-
     repositories {
         google()
         mavenCentral()
     }
-
     dependencies {
-        classpath "com.android.tools.build:gradle:8.1.1"
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath "com.google.gms:google-services:4.3.15"
-        //classpath "dev.flutter:flutter-gradle-plugin:1.0.0"
+        classpath("com.google.gms:google-services:4.3.15") // ✅ Kotlin DSL 문법
     }
 }
 
@@ -25,7 +19,6 @@ subprojects {
     evaluationDependsOn(":app")
 }
 
-// ✅ Groovy에서 clean task는 이렇게 씀
 tasks.register("clean", Delete) {
-    delete rootProject.buildDir
+    delete rootProject.layout.buildDirectory
 }
