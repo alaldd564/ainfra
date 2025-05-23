@@ -4,6 +4,12 @@
     <!-- ✅ 필수 권한 -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+<<<<<<< HEAD
+=======
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    
+    <!-- ✅ 위치 권한 -->
+>>>>>>> recovered-stt
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
@@ -16,6 +22,9 @@
             <action android:name="android.intent.action.PROCESS_TEXT" />
             <data android:mimeType="text/plain" />
         </intent>
+         <intent>
+        <action android:name="android.speech.RecognitionService" />
+     </intent>
     </queries>
 
     <application
