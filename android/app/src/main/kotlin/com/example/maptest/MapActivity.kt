@@ -9,7 +9,7 @@ class MapActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         val tmapView = TMapView(this)
-        tmapView.setSKTMapApiKey("발급받은 API 키") // 필수
+        tmapView.setSKTMapApiKey("NsxOESGJ823yk2Nyvwcf15sSqaYMBXlw1L4UBmoa") // 필수
         setContentView(tmapView)
     }
 }
