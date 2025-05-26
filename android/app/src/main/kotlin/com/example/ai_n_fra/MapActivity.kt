@@ -1,4 +1,4 @@
-package com.example.maptest
+package com.example.ai_n_fra
 
 import android.graphics.BitmapFactory
 import android.os.Bundle
