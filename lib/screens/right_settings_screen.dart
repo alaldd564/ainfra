@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:ainfra/screens/brightness_settings.dart';
+import 'package:maptest/screens/brightness_settings.dart';
+
 
 class RightSettingsScreen extends StatelessWidget {
   const RightSettingsScreen({super.key});

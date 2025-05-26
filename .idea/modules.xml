@@ -2,8 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/ai_n_fra.iml" filepath="$PROJECT_DIR$/ai_n_fra.iml" />
-      <module fileurl="file://$PROJECT_DIR$/android/ai_n_fra_android.iml" filepath="$PROJECT_DIR$/android/ai_n_fra_android.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/ainfra6.iml" filepath="$PROJECT_DIR$/.idea/ainfra6.iml" />
     </modules>
   </component>
 </project>

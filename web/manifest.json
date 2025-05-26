@@ -1,6 +1,6 @@
 {
-    "name": "ai_n_fra",
-    "short_name": "ai_n_fra",
+    "name": "maptest",
+    "short_name": "maptest",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

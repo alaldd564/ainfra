@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ Firestore 추가
-import '../services/auth_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../services/auth_service.dart';
 import 'left_sos_screen.dart';
 import 'right_settings_screen.dart';
 import 'top_taxi_screen.dart';
 import 'bottom_naviate_screen.dart';
+import 'tmap_launch_screen.dart'; // ✅ 추가
 
 class BlindHomeScreen extends StatefulWidget {
   const BlindHomeScreen({super.key});
@@ -55,7 +56,6 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
     await _tts.awaitSpeakCompletion(true);
     await _tts.speak('$screenName으로 이동합니다');
 
-    // 음성 재생 후 화면 전환
     await Future.delayed(const Duration(milliseconds: 500));
 
     if (context.mounted) {
@@ -79,17 +79,16 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
         if (!context.mounted) return;
         showDialog(
           context: context,
-          builder:
-              (context) => AlertDialog(
-                title: const Text('도움말'),
-                content: const Text('화면을 상하좌우로 스와이프하면 기능을 이동할 수 있습니다.'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('닫기'),
-                  ),
-                ],
+          builder: (context) => AlertDialog(
+            title: const Text('도움말'),
+            content: const Text('화면을 상하좌우로 스와이프하면 기능을 이동할 수 있습니다.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('닫기'),
               ),
+            ],
+          ),
         );
         break;
 
@@ -98,32 +97,30 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
         final timestamp = DateTime.now().millisecondsSinceEpoch;
         final generatedId = '${uid}_$timestamp';
 
-        // ✅ blind_users 컬렉션에 문서 저장 (문서 ID = 고유번호)
         await FirebaseFirestore.instance
             .collection('blind_users')
             .doc(generatedId)
             .set({
-              'uid': uid,
-              'user_key': '', // 보호자 연결 전에는 빈 문자열
-              'created_at': FieldValue.serverTimestamp(),
-            });
+          'uid': uid,
+          'user_key': '',
+          'created_at': FieldValue.serverTimestamp(),
+        });
 
         await Clipboard.setData(ClipboardData(text: generatedId));
 
         if (!context.mounted) return;
         showDialog(
           context: context,
-          builder:
-              (context) => AlertDialog(
-                title: const Text('고유번호 생성됨'),
-                content: Text('고유번호: $generatedId\n(자동 복사되었습니다)'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('확인'),
-                  ),
-                ],
+          builder: (context) => AlertDialog(
+            title: const Text('고유번호 생성됨'),
+            content: Text('고유번호: $generatedId\n(자동 복사되었습니다)'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('확인'),
               ),
+            ],
+          ),
         );
         break;
     }
@@ -148,12 +145,11 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Color(0xFFFFD400)),
             onSelected: (value) => _handleMenu(context, value),
-            itemBuilder:
-                (context) => const [
-                  PopupMenuItem(value: 'logout', child: Text('로그아웃')),
-                  PopupMenuItem(value: 'help', child: Text('도움말')),
-                  PopupMenuItem(value: 'generate_id', child: Text('고유번호 생성')),
-                ],
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'logout', child: Text('로그아웃')),
+              PopupMenuItem(value: 'help', child: Text('도움말')),
+              PopupMenuItem(value: 'generate_id', child: Text('고유번호 생성')),
+            ],
           ),
         ],
       ),
@@ -167,6 +163,26 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
               style: TextStyle(color: Color(0xFFFFE51F), fontSize: 20),
             ),
           ),
+
+          const SizedBox(height: 10),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const TmapLaunchScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepPurple,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('지도 테스트 화면 이동'),
+          ),
+
           const Spacer(),
           Center(
             child: GestureDetector(

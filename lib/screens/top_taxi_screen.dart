@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -14,9 +13,7 @@ class TopTaxiScreen extends StatefulWidget {
 
 class TopTaxiScreenState extends State<TopTaxiScreen> {
   final FlutterTts _flutterTts = FlutterTts();
-
   bool _firstDoubleTapConfirmed = false;
-  String? _nextPhoneNumber;
 
   final Map<String, String> taxiPhoneNumbers = {
     '서울특별시': 'tel:1588-4388',
@@ -37,64 +34,52 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
     '제주특별자치도': 'tel:064-759-0000',
   };
 
-  Future<void> _callTaxi(String phoneNumber) async {
-    final uri = Uri.parse(phoneNumber);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      debugPrint('전화 연결 실패');
-    }
-  }
-
-  Future<void> _launchKakaoTaxiApp() async {
-    try {
-      if (Platform.isAndroid) {
-        final uri = Uri.parse('intent://#Intent;package=com.kakao.taxi;end');
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        } else {
-          debugPrint('카카오택시 앱 실행 실패, 스토어로 이동');
-          await launchUrl(
-            Uri.parse(
-              'https://play.google.com/store/apps/details?id=com.kakao.taxi',
-            ),
-            mode: LaunchMode.externalApplication,
-          );
-        }
-      } else if (Platform.isIOS) {
-        // iOS는 intent 지원 안 됨 → 앱 스토어 링크만 제공
-        await launchUrl(
-          Uri.parse(
-            'https://apps.apple.com/kr/app/%EC%B9%B4%EC%B9%B4%EC%98%A4%ED%83%9D%EC%8B%9C/id981110422',
-          ),
-          mode: LaunchMode.externalApplication,
-        );
-      }
-    } catch (e) {
-      debugPrint('카카오택시 실행 중 오류: $e');
-    }
-  }
-
   Future<void> _speakText(String text) async {
     await _flutterTts.stop();
     await _flutterTts.speak(text);
     debugPrint('🗣️ TTS 실행됨: $text');
   }
 
+  Future<void> _callTaxi(String phoneNumber) async {
+    if (await canLaunchUrl(Uri.parse(phoneNumber))) {
+      await launchUrl(Uri.parse(phoneNumber));
+    } else {
+      debugPrint('전화 연결 실패');
+      await _speakText('전화 연결에 실패했습니다.');
+    }
+  }
+
+  Future<void> _launchKakaoTLink() async {
+    final Uri url = Uri.parse('https://service.kakaomobility.com/launch/kakaot/');
+    try {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('카카오T 링크 실행 중 오류: $e');
+      await _speakText('카카오택시를 실행하지 못했습니다. 앱이 설치되어 있는지 확인해주세요.');
+    }
+  }
+
   Future<void> _onDoubleTap() async {
     if (!_firstDoubleTapConfirmed) {
       debugPrint('👆 첫 번째 두 번 탭 감지');
       await _speakText('카카오택시를 부르시겠습니까? 맞으시면 화면을 두 번 터치해주세요.');
-      setState(() => _firstDoubleTapConfirmed = true);
+      setState(() {
+        _firstDoubleTapConfirmed = true;
+      });
     } else {
       debugPrint('✅ 두 번째 두 번 탭: 카카오택시 실행');
-      await _launchKakaoTaxiApp();
-      setState(() => _firstDoubleTapConfirmed = false);
+      await _speakText('브라우저가 열립니다. 열기 버튼을 눌러 카카오택시를 실행하세요.');
+      await Future.delayed(const Duration(seconds: 1));
+      await _launchKakaoTLink();
+      setState(() {
+        _firstDoubleTapConfirmed = false;
+      });
     }
   }
 
   Future<void> _getLocationAndCallTaxi() async {
-    if (!await Geolocator.isLocationServiceEnabled()) {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
       await _speakText('위치 서비스가 꺼져 있습니다. 설정에서 활성화해주세요.');
       return;
     }
@@ -113,30 +98,32 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
       return;
     }
 
-    final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+    Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
     );
 
     try {
-      final placemarks = await placemarkFromCoordinates(
+      List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
         localeIdentifier: 'ko',
       );
 
       if (placemarks.isNotEmpty) {
-        final place = placemarks.first;
-        final address =
-            '${place.administrativeArea ?? ''} ${place.locality ?? ''} ${place.subLocality ?? ''} ${place.street ?? ''}';
+        final Placemark place = placemarks.first;
+        final String address =
+            '${place.street}, ${place.locality}, ${place.administrativeArea}';
+        debugPrint('📍 주소: $address');
 
-        debugPrint('📍 도로명 주소: $address');
+        await _speakText('현재 위치는 $address입니다.');
 
-        final region = place.administrativeArea;
-        final phoneNumber = taxiPhoneNumbers[region];
+        final String region = place.administrativeArea ?? '';
+        final String? phoneNumber = taxiPhoneNumbers[region];
 
         if (phoneNumber != null) {
-          _nextPhoneNumber = phoneNumber;
-          await _speakText('현재 위치는 $address 입니다.');
+          await _speakText('$region 장애인 콜택시로 연결합니다.');
+          await Future.delayed(const Duration(seconds: 1));
+          await _callTaxi(phoneNumber);
         } else {
           await _speakText('$region 지역의 콜택시 번호를 찾을 수 없습니다.');
         }
@@ -149,32 +136,16 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
     }
   }
 
-  void _handleSwipeDown() => _getLocationAndCallTaxi();
+  void _handleSwipeDown() async {
+    debugPrint('📞 아래로 스와이프 감지: 장애인 택시 호출');
+    await _getLocationAndCallTaxi();
+  }
 
   @override
   void initState() {
     super.initState();
     _flutterTts.setLanguage('ko-KR');
     _flutterTts.setSpeechRate(0.5);
-
-    _flutterTts.setCompletionHandler(() async {
-      debugPrint('🗣️ TTS 완료됨');
-      if (_nextPhoneNumber != null) {
-        final regionName =
-            taxiPhoneNumbers.entries
-                .firstWhere(
-                  (entry) => entry.value == _nextPhoneNumber,
-                  orElse: () => const MapEntry('해당 지역', ''),
-                )
-                .key;
-
-        await _speakText('$regionName 장애인 콜택시로 연결합니다.');
-        await Future.delayed(const Duration(seconds: 1));
-        await _callTaxi(_nextPhoneNumber!);
-        _nextPhoneNumber = null;
-      }
-    });
-
     _speakText(
       '장애인 택시와 카카오택시를 호출할 수 있습니다. 장애인 콜택시를 부르시려면 아래로 스와이프를, 카카오택시를 부르시려면 두 번 탭해주세요.',
     );

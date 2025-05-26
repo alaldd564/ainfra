@@ -21,25 +21,14 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   bool showMap = false;
   NLatLng? _currentLocation;
 
-<<<<<<< HEAD
-  // ✅ 음성 인식 인스턴스 추가
-  late stt.SpeechToText _speech;
-  bool _isSpeechAvailable = false;
-=======
   late stt.SpeechToText _speech;
   bool _isTtsSpeaking = false;
   bool _isReadyForDoubleTap = false;
   bool _navigating = false; // 중복 실행 방지용
->>>>>>> recovered-stt
 
   @override
   void initState() {
     super.initState();
-<<<<<<< HEAD
-    _requestMicrophonePermission(); // ✅ 추가됨: 마이크 권한 요청
-    _speech = stt.SpeechToText(); // ✅ 초기화
-    _initSpeechRecognition(); // ✅ 음성 인식 초기화 함수 호출
-=======
 
     _tts.setLanguage("ko-KR");
     _tts.setSpeechRate(0.5);
@@ -58,47 +47,13 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
       _initializeSpeech(); // TTS 끝나고 음성 인식 시작
     }, '목적지를 말씀해주세요.');
 
->>>>>>> recovered-stt
     _getCurrentLocation();
-  }
-
-  // ✅ 추가됨: 마이크 권한 요청 함수
-  Future<void> _requestMicrophonePermission() async {
-    final status = await Permission.microphone.request();
-    if (!status.isGranted) {
-      await _speak('마이크 권한이 필요합니다. 설정에서 허용해주세요.');
-    }
   }
 
   Future<void> _speak(String text) async {
     await _tts.speak(text);
   }
 
-<<<<<<< HEAD
-  // ✅ 실제 음성 인식을 수행하는 함수
-  Future<void> _initSpeechRecognition() async {
-    _isSpeechAvailable = await _speech.initialize(
-      onStatus: (val) => debugPrint('🎤 상태: $val'),
-      onError: (val) => debugPrint('🎤 오류: $val'),
-    );
-
-    if (_isSpeechAvailable) {
-      await _speak('목적지를 말씀해주세요.');
-      await _speech.listen(
-        localeId: 'ko_KR',
-        onResult: (val) {
-          if (val.finalResult) {
-            setState(() {
-              recognizedText = val.recognizedWords;
-            });
-            _speak('$recognizedText이 맞으시다면 화면을 두 번 터치해주세요.');
-          }
-        },
-      );
-    } else {
-      _speak('음성 인식을 사용할 수 없습니다. 설정을 확인해주세요.');
-    }
-=======
   Future<void> _speakThen(Function callback, String text) async {
     await _tts.speak(text);
     while (_isTtsSpeaking) {
@@ -159,7 +114,6 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     setState(() {
       showMap = true;
     });
->>>>>>> recovered-stt
   }
 
   Future<void> _getCurrentLocation() async {
@@ -209,20 +163,6 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                   ))
               : Center(
                 child: GestureDetector(
-<<<<<<< HEAD
-                  onDoubleTap: () {
-                    _speak('$recognizedText로 경로를 안내합니다.');
-                    setState(() {
-                      showMap = true;
-                    });
-                  },
-                  child: Text(
-                    recognizedText.isEmpty
-                        ? '말씀해주세요...'
-                        : '입력된 목적지: $recognizedText',
-                    style: const TextStyle(color: Colors.white, fontSize: 20),
-                    textAlign: TextAlign.center,
-=======
                   behavior: HitTestBehavior.opaque, // ✅ 추가: 빈 공간도 탭 인식
                   onDoubleTap: _handleDoubleTap, // ✅ 수정: 별도 함수로 분리
                   child: Column(
@@ -247,7 +187,6 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                           child: const Text('경로 안내 시작'),
                         ),
                     ],
->>>>>>> recovered-stt
                   ),
                 ),
               ),
