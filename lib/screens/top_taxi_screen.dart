@@ -50,7 +50,9 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
   }
 
   Future<void> _launchKakaoTLink() async {
-    final Uri url = Uri.parse('https://service.kakaomobility.com/launch/kakaot/');
+    final Uri url = Uri.parse(
+      'https://service.kakaomobility.com/launch/kakaot/',
+    );
     try {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } catch (e) {
