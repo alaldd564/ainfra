@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ Firestore 추가
+import 'package:geolocator/geolocator.dart'; // ✅ 위치 측정 추가
+import 'package:permission_handler/permission_handler.dart'; // ✅ 권한 요청 추가
 import '../services/auth_service.dart';
+import 'dart:async'; // ✅ Timer 추가
 import 'left_sos_screen.dart';
 import 'right_settings_screen.dart';
 import 'top_taxi_screen.dart';
@@ -21,6 +23,51 @@ class BlindHomeScreen extends StatefulWidget {
 class _BlindHomeScreenState extends State<BlindHomeScreen> {
   static final AuthService _authService = AuthService();
   final FlutterTts _tts = FlutterTts();
+
+  @override
+  void initState() {
+    super.initState();
+    _startLocationUpload(); // ✅ 위치 업로드 시작
+  }
+
+  // ✅ 위치 권한 요청 및 Firestore 업로드 함수
+  Future<void> _startLocationUpload() async {
+    final status = await Permission.location.request();
+
+    if (status.isGranted) {
+      Timer.periodic(const Duration(seconds: 10), (_) async {
+        try {
+          final position = await Geolocator.getCurrentPosition();
+
+          final uid = FirebaseAuth.instance.currentUser?.uid;
+          if (uid == null) return;
+
+          final snapshot =
+              await FirebaseFirestore.instance
+                  .collection('blind_users')
+                  .where('uid', isEqualTo: uid)
+                  .limit(1)
+                  .get();
+
+          if (snapshot.docs.isEmpty) return;
+          final docId = snapshot.docs.first.id;
+
+          await FirebaseFirestore.instance
+              .collection('locations')
+              .doc(docId)
+              .set({
+                'lat': position.latitude,
+                'lng': position.longitude,
+                'timestamp': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true));
+        } catch (e) {
+          debugPrint('위치 전송 오류: \$e');
+        }
+      });
+    } else {
+      debugPrint('위치 권한이 거부되었습니다.');
+    }
+  }
 
   Future<void> _handleSwipe(
     BuildContext context,
@@ -79,16 +126,17 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
         if (!context.mounted) return;
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('도움말'),
-            content: const Text('화면을 상하좌우로 스와이프하면 기능을 이동할 수 있습니다.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('닫기'),
+          builder:
+              (context) => AlertDialog(
+                title: const Text('도움말'),
+                content: const Text('화면을 상하좌우로 스와이프하면 기능을 이동할 수 있습니다.'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('닫기'),
+                  ),
+                ],
               ),
-            ],
-          ),
         );
         break;
 
@@ -101,26 +149,27 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
             .collection('blind_users')
             .doc(generatedId)
             .set({
-          'uid': uid,
-          'user_key': '',
-          'created_at': FieldValue.serverTimestamp(),
-        });
+              'uid': uid,
+              'user_key': '',
+              'created_at': FieldValue.serverTimestamp(),
+            });
 
         await Clipboard.setData(ClipboardData(text: generatedId));
 
         if (!context.mounted) return;
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('고유번호 생성됨'),
-            content: Text('고유번호: $generatedId\n(자동 복사되었습니다)'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('확인'),
+          builder:
+              (context) => AlertDialog(
+                title: const Text('고유번호 생성됨'),
+                content: Text('고유번호: $generatedId\n(자동 복사되었습니다)'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('확인'),
+                  ),
+                ],
               ),
-            ],
-          ),
         );
         break;
     }
@@ -145,11 +194,12 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Color(0xFFFFD400)),
             onSelected: (value) => _handleMenu(context, value),
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'logout', child: Text('로그아웃')),
-              PopupMenuItem(value: 'help', child: Text('도움말')),
-              PopupMenuItem(value: 'generate_id', child: Text('고유번호 생성')),
-            ],
+            itemBuilder:
+                (context) => const [
+                  PopupMenuItem(value: 'logout', child: Text('로그아웃')),
+                  PopupMenuItem(value: 'help', child: Text('도움말')),
+                  PopupMenuItem(value: 'generate_id', child: Text('고유번호 생성')),
+                ],
           ),
         ],
       ),
@@ -169,7 +219,9 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const TmapLaunchScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const TmapLaunchScreen(),
+                ),
               );
             },
             style: ElevatedButton.styleFrom(

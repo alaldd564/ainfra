@@ -20,6 +20,10 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   NLatLng? _currentLocation;
   final AuthService _authService = AuthService();
 
+  NMarker? _blindUserMarker; // ✅ 시각장애인 마커 변수 추가
+  StreamSubscription<DocumentSnapshot>?
+  _locationSubscription; // ✅ 실시간 위치 구독 변수 추가
+
   @override
   void initState() {
     super.initState();
@@ -28,6 +32,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       _initFCM(); // FCM 초기화 추가
       _checkPendingSos(); // 실행 시 SOS 확인 추가
       _saveFcmToken();
+      _subscribeToBlindUserLocation(); // ✅ 위치 구독 시작
     });
   }
 
@@ -158,6 +163,63 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     }
   }
 
+  Future<void> _subscribeToBlindUserLocation() async {
+    // ✅ 위치 구독 함수 추가
+    final guardianUid = FirebaseAuth.instance.currentUser?.uid;
+    if (guardianUid == null) return;
+
+    final guardianDoc =
+        await FirebaseFirestore.instance
+            .collection('guardians')
+            .doc(guardianUid)
+            .get();
+
+    final linkedUserKey = guardianDoc.data()?['linked_user_code'];
+    if (linkedUserKey == null) return;
+
+    _locationSubscription?.cancel();
+
+    _locationSubscription = FirebaseFirestore.instance
+        .collection('locations')
+        .doc(linkedUserKey)
+        .snapshots()
+        .listen((snapshot) async {
+          if (!snapshot.exists) return;
+
+          final data = snapshot.data();
+          if (data == null) return;
+
+          final lat = data['lat'];
+          final lng = data['lng'];
+
+          final blindLatLng = NLatLng(lat, lng);
+          final controller = await _controller.future;
+
+          final marker = NMarker(
+            id: 'blind_marker',
+            position: blindLatLng,
+            caption: NOverlayCaption(text: '시각장애인 위치'),
+          );
+
+          // ✅ 기존 마커 제거
+          if (_blindUserMarker != null) {
+            await controller.deleteOverlay(_blindUserMarker!.info);
+          }
+
+          // ✅ 새 마커 추가
+          await controller.addOverlay(marker);
+
+          // ✅ 자동 카메라 이동 추가
+          await controller.updateCamera(
+            NCameraUpdate.withParams(target: blindLatLng, zoom: 16),
+          );
+
+          setState(() {
+            _blindUserMarker = marker;
+          });
+        });
+  }
+
   void _handleMenu(String value) async {
     if (value == 'logout') {
       await _authService.signOut();
@@ -235,6 +297,12 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         },
       );
     }
+  }
+
+  @override
+  void dispose() {
+    _locationSubscription?.cancel(); // ✅ 위치 구독 해제
+    super.dispose();
   }
 
   @override

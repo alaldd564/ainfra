@@ -97,7 +97,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
       partialResults: true,
       cancelOnError: false,
       pauseFor: const Duration(seconds: 3),
-      listenFor: const Duration(seconds: 10),
+      listenFor: const Duration(seconds: 15), // 응답대기시간
       listenMode: stt.ListenMode.dictation,
     );
   }

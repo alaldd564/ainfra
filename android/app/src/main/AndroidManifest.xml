@@ -51,6 +51,11 @@
             android:value="NsxOESGJ823yk2Nyvwcf15sSqaYMBXlw1L4UBmoa" />
 
         <meta-data
+            android:name="com.naver.maps.map.CLIENT_ID"
+            android:value="4aktoebb8w" />
+
+
+        <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
