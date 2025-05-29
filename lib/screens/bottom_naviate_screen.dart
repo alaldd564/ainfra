@@ -56,8 +56,8 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
 
   Future<void> _initializeSpeech() async {
     bool available = await _speech.initialize(
-      onStatus: (status) => print('STT status: \$status'),
-      onError: (error) => print('STT error: \$error'),
+      onStatus: (status) => print('STT status: $status'),
+      onError: (error) => print('STT error: $error'),
     );
     if (available) {
       _startListening();
@@ -73,7 +73,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
           recognizedText = result.recognizedWords;
           _speech.stop();
           _speakThen(() => setState(() => _isReadyForDoubleTap = true),
-              '\$recognizedText이 맞으신가요? 맞으시다면 화면을 두 번 터치해주세요.');
+              '$recognizedText이 맞으신가요? 맞으시다면 화면을 두 번 터치해주세요.');
         }
       },
       localeId: 'ko_KR',
@@ -88,7 +88,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   void _handleDoubleTap() async {
     if (_navigating || !_isReadyForDoubleTap || _isTtsSpeaking || recognizedText.isEmpty) return;
     _navigating = true;
-    await _speak('\$recognizedText로 경로를 안내합니다.');
+    await _speak('$recognizedText로 경로를 안내합니다.');
     setState(() => showMap = true);
 
     try {
@@ -112,7 +112,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
         _speak("목적지 위치를 찾을 수 없습니다.");
       }
     } catch (e) {
-      print("위치 변환 오류: \$e");
+      print("위치 변환 오류: $e");
       _speak("목적지 변환 중 오류가 발생했습니다.");
     }
   }
@@ -142,7 +142,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
           width: double.maxFinite,
           child: ListView(
             shrinkWrap: true,
-            children: guides.map((text) => Text('• \$text')).toList(),
+            children: guides.map((text) => Text('• $text')).toList(),
           ),
         ),
         actions: [
@@ -200,7 +200,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      recognizedText.isEmpty ? '말씀해주세요...' : '입력된 목적지: \$recognizedText',
+                      recognizedText.isEmpty ? '말씀해주세요...' : '입력된 목적지: $recognizedText',
                       style: const TextStyle(color: Colors.white, fontSize: 20),
                       textAlign: TextAlign.center,
                     ),
