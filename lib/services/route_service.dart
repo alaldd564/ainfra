@@ -1,9 +1,8 @@
 import 'dart:convert';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';  // ✅ dotenv import
 
-final String tmapApiKey = dotenv.env['TMAP_API_KEY'] ?? '';
+const String tmapApiKey = 'Jpdc9otrzA2ZTXkYregN2akyQFKvDUYa6iJFWaGW';
 
 /// 🚶 도보 경로 탐색
 Future<List<String>> getWalkingRoute(NLatLng start, NLatLng end) async {
@@ -69,6 +68,7 @@ Future<List<String>> getTransitRoute(NLatLng start, NLatLng end) async {
       '&startX=${start.longitude}&startY=${start.latitude}'
       '&endX=${end.longitude}&endY=${end.latitude}';
 
+  // ✅ 헤더에 appKey 추가
   final headers = {
     'accept': 'application/json',
     'appKey': tmapApiKey,
@@ -94,6 +94,7 @@ Future<List<String>> getTransitRoute(NLatLng start, NLatLng end) async {
   } else {
     guideTexts.add('🚫 대중교통 실패: ${response.statusCode}');
   }
-
+  
   return guideTexts;
+
 }
