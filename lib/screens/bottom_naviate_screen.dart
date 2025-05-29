@@ -5,7 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:geocoding/geocoding.dart';
-import 'package:maptest/services/route_service.dart'; // 🔄 실제 경로로 수정해주세요
+import 'package:maptest/services/route_service.dart';
 import 'dart:async';
 
 class BottomNavigateScreen extends StatefulWidget {
@@ -98,15 +98,17 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
         final destination = NLatLng(dest.latitude, dest.longitude);
 
         if (_currentLocation != null) {
-          final guides = await getWalkingRoute(_currentLocation!, destination);
+          final walkingGuides = await getWalkingRoute(_currentLocation!, destination);
+          final transitGuides = await getTransitRoute(_currentLocation!, destination);
 
-          if (guides.isEmpty) {
+          if (walkingGuides.isEmpty && transitGuides.isEmpty) {
             _showErrorDialog('경로를 불러오지 못했습니다.');
           } else {
-            _showRouteGuidePopup(guides);
+            _showUnifiedRoutePopup(
+              walkingGuides: walkingGuides,
+              transitGuides: transitGuides,
+            );
           }
-
-          await getTransitRoute(_currentLocation!, destination);
         }
       } else {
         _speak("목적지 위치를 찾을 수 없습니다.");
@@ -133,16 +135,25 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     }
   }
 
-  void _showRouteGuidePopup(List<String> guides) {
+  void _showUnifiedRoutePopup({
+    required List<String> walkingGuides,
+    required List<String> transitGuides,
+  }) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('도보 경로 안내'),
+        title: const Text('전체 경로 안내'),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView(
             shrinkWrap: true,
-            children: guides.map((text) => Text('• $text')).toList(),
+            children: [
+              const Text('🚶 도보 경로', style: TextStyle(fontWeight: FontWeight.bold)),
+              ...walkingGuides.map((text) => Text('• $text')),
+              const SizedBox(height: 16),
+              const Text('🚌 대중교통 경로', style: TextStyle(fontWeight: FontWeight.bold)),
+              ...transitGuides.map((text) => Text('• $text')),
+            ],
           ),
         ),
         actions: [
