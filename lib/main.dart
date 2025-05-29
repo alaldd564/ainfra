@@ -16,8 +16,8 @@ void main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // ✅ 네이버 지도 초기화
-  await NaverMapSdk.instance.initialize(
-    clientId: '4aktoebb8w', // ← 본인의 네이버 지도 client ID 입력
+  await FlutterNaverMap().init(
+    clientId: 'iytq4xot6d', // ← 본인의 네이버 지도 client ID 입력
     onAuthFailed: (e) => debugPrint("네이버 지도 인증 실패: $e"),
   );
 

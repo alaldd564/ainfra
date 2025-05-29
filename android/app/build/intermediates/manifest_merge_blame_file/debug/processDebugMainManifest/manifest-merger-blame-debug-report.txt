@@ -126,7 +126,7 @@
 82        <!-- ✅ Naver Map 설정 -->
 83        <meta-data
 84            android:name="com.naver.maps.map.CLIENT_ID"
-85            android:value="4aktoebb8w" />
+85            android:value="iytq4xot6d" />
 86
 87        <activity
 87-->[com.naver.maps:map-sdk:3.21.0] C:\Users\LG\.gradle\caches\8.10.2\transforms\2cc3e97bebaf48c78593f1a3b1b91381\transformed\jetified-map-sdk-3.21.0\AndroidManifest.xml:19:9-23:51

@@ -334,7 +334,10 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                     target: _currentLocation!,
                     zoom: 16,
                   ),
+                  mapType: NMapType.basic, // ✅ 지도 기본타입 지정
+                  liteModeEnable: false, // ✅ 경량 모드 끄기 (타일 생략 방지)
                   locationButtonEnable: true,
+                  indoorEnable: true, // ✅ 실내지도 가능 (선택)
                 ),
               ),
     );
