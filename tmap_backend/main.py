@@ -1,42 +1,46 @@
 # 📁 main.py
-from fastapi import FastAPI, Query
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException, Query
 import requests
-from dotenv import load_dotenv
 import os
+from dotenv import load_dotenv
 
-load_dotenv()  # .env 파일에서 API 키 불러오기
+# .env 로드
+load_dotenv()
+TMAP_API_KEY = os.getenv("TMAP_API_KEY")
 
 app = FastAPI()
 
-# CORS 설정 (Flutter 등 외부에서 호출 가능하도록)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # 실제 운영 시에는 "*" 대신 특정 도메인으로 제한하는 것이 안전해
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+@app.get("/route/walking")
+def walking_route(startX: float = Query(...), startY: float = Query(...), endX: float = Query(...), endY: float = Query(...)):
+    url = 'https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1&format=json'
+    headers = {
+        "appKey": TMAP_API_KEY,
+        "Content-Type": "application/json"
+    }
+    body = {
+        "startX": str(startX),
+        "startY": str(startY),
+        "endX": str(endX),
+        "endY": str(endY),
+        "reqCoordType": "WGS84GEO",
+        "resCoordType": "WGS84GEO",
+        "startName": "출발지",
+        "endName": "도착지"
+    }
 
-@app.get("/transit")
-def get_transit_route(
-    startX: float = Query(...),
-    startY: float = Query(...),
-    endX: float = Query(...),
-    endY: float = Query(...),
-):
-    url = (
-        "https://apis.openapi.sk.com/transit/routes?version=1&format=json"
-        f"&startX={startX}&startY={startY}&endX={endX}&endY={endY}"
-    )
+    res = requests.post(url, headers=headers, json=body)
+    if res.status_code != 200:
+        raise HTTPException(status_code=res.status_code, detail=res.text)
+    return res.json()
 
+@app.get("/route/transit")
+def transit_route(startX: float = Query(...), startY: float = Query(...), endX: float = Query(...), endY: float = Query(...)):
+    url = f"https://apis.openapi.sk.com/transit/routes?version=1&format=json&startX={startX}&startY={startY}&endX={endX}&endY={endY}"
     headers = {
         "accept": "application/json",
-        "appKey": os.getenv("TMAP_API_KEY"),  # .env에서 불러온 키 사용
+        "appKey": TMAP_API_KEY
     }
-
-    response = requests.get(url, headers=headers)
-    return {
-        "status": response.status_code,
-        "body": response.json()
-    }
+    res = requests.get(url, headers=headers)
+    if res.status_code != 200:
+        raise HTTPException(status_code=res.status_code, detail=res.text)
+    return res.json()
