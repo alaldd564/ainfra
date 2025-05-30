@@ -20,3 +20,4 @@ class BrightnessSettings extends ChangeNotifier {
     notifyListeners();
   }
 }
+  

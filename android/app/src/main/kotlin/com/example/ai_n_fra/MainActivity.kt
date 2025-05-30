@@ -1,4 +1,4 @@
-package com.example.ai_n_fra
+package com.example.maptest
 
 import android.content.Intent
 import io.flutter.embedding.android.FlutterActivity

@@ -34,6 +34,10 @@ dependencies:
   speech_to_text: ^7.0.0
   http: ^1.1.0
   provider: 6.1.1
+  dotenv: ^4.1.0
+  webview_flutter: ^4.0.0
+  webview_flutter_android: ^4.7.0
+
 
 dev_dependencies:
   flutter_test:
@@ -44,6 +48,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/sos_button.png
+    - assets/tmap_webview.html
 
 
 dependency_overrides:
