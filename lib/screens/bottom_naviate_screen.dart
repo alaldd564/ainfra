@@ -104,23 +104,27 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
         final destination = NLatLng(dest.latitude, dest.longitude);
 
         if (_currentLocation != null) {
-          final walkingGuides = await getWalkingRoute(
+          final (guides, pathCoords, markers) = await getWalkingRouteWithPath(
             _currentLocation!,
             destination,
           );
-          final transitGuides = await getTransitRoute(
-            _currentLocation!,
-            destination,
+          final controller = await _mapController.future;
+
+          final polyline = NPolylineOverlay(
+            // 폴리라인 오버레이 생성
+            id: 'walking_path',
+            coords: pathCoords,
+            width: 6,
+            color: Colors.blue,
           );
 
-          if (walkingGuides.isEmpty && transitGuides.isEmpty) {
-            _showErrorDialog('경로를 불러오지 못했습니다.');
-          } else {
-            _showUnifiedRoutePopup(
-              walkingGuides: walkingGuides,
-              transitGuides: transitGuides,
-            );
+          await controller.addOverlay(polyline); // 지도에 경로 표시
+
+          for (final marker in markers) {
+            await controller.addOverlay(marker); // ✅ 출발/도착 마커 추가 표시
           }
+
+          _showUnifiedRoutePopup(walkingGuides: guides, transitGuides: []);
         }
       } else {
         _speak("목적지 위치를 찾을 수 없습니다.");
@@ -184,23 +188,6 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('닫기'),
-              ),
-            ],
-          ),
-    );
-  }
-
-  void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('오류'),
-            content: Text(message),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('확인'),
               ),
             ],
           ),
