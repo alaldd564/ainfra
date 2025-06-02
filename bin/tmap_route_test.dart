@@ -1,29 +1,30 @@
-// 📁 bin/tmap_route_test.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-
-const String tmapApiKey = 'Jpdc9otrzA2ZTXkYregN2akyQFKvDUYa6iJFWaGW';
+import 'package:dotenv/dotenv.dart' as dotenv;
 
 Future<void> main() async {
+  dotenv.load(); // .env 불러오기
+
+  final tmapApiKey = dotenv.env['TMAP_API_KEY'] ?? '';
   final start = {'lat': 37.5665, 'lng': 126.9780}; // 서울 시청
   final end = {'lat': 37.5547, 'lng': 126.9706};   // 서울역
 
   print('📍 출발지: ${start['lat']}, ${start['lng']}');
   print('📍 도착지: ${end['lat']}, ${end['lng']}');
 
-  final walking = await getWalkingRoute(start, end);
+  final walking = await getWalkingRoute(start, end, tmapApiKey);
   print('\n🚶 도보 경로 결과:');
   walking.forEach(print);
 
-  final transit = await getTransitRoute(start, end);
+  final transit = await getTransitRoute(start, end, tmapApiKey);
   print('\n🚌 대중교통 경로 결과:');
   transit.forEach(print);
 }
 
-Future<List<String>> getWalkingRoute(Map<String, double> start, Map<String, double> end) async {
+Future<List<String>> getWalkingRoute(Map<String, double> start, Map<String, double> end, String apiKey) async {
   final url = 'https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1&format=json';
   final headers = {
-    'appKey': tmapApiKey,
+    'appKey': apiKey,
     'Content-Type': 'application/json',
   };
   final body = jsonEncode({
@@ -71,7 +72,7 @@ Future<List<String>> getWalkingRoute(Map<String, double> start, Map<String, doub
   return guideTexts;
 }
 
-Future<List<String>> getTransitRoute(Map<String, double> start, Map<String, double> end) async {
+Future<List<String>> getTransitRoute(Map<String, double> start, Map<String, double> end, String apiKey) async {
   final url =
       'https://apis.openapi.sk.com/transit/routes?version=1&format=json'
       '&startX=${start['lng']}&startY=${start['lat']}'
@@ -79,12 +80,11 @@ Future<List<String>> getTransitRoute(Map<String, double> start, Map<String, doub
 
   final headers = {
     'accept': 'application/json',
-    'Authorization': tmapApiKey,
+    'appKey': apiKey, // Authorization → appKey 수정
   };
 
   final response = await http.get(Uri.parse(url), headers: headers);
 
-  // 📌 추가: 응답 로그 출력
   print("📡 대중교통 응답 코드: ${response.statusCode}");
   print("📦 대중교통 응답 본문:\n${response.body}");
 
