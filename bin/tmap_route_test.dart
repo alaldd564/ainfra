@@ -1,26 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:dotenv/dotenv.dart' as dotenv;
 
-Future<void> main() async {
-  dotenv.load(); // .env 불러오기
+/// ✅ API 키 직접 입력
+const String tmapApiKey = 'Jpdc9otrzA2ZTXkYregN2akyQFKvDUYa6iJFWaGW';
 
-  final tmapApiKey = dotenv.env['TMAP_API_KEY'] ?? '';
-  final start = {'lat': 37.5665, 'lng': 126.9780}; // 서울 시청
-  final end = {'lat': 37.5547, 'lng': 126.9706};   // 서울역
-
-  print('📍 출발지: ${start['lat']}, ${start['lng']}');
-  print('📍 도착지: ${end['lat']}, ${end['lng']}');
-
-  final walking = await getWalkingRoute(start, end, tmapApiKey);
-  print('\n🚶 도보 경로 결과:');
-  walking.forEach(print);
-
-  final transit = await getTransitRoute(start, end, tmapApiKey);
-  print('\n🚌 대중교통 경로 결과:');
-  transit.forEach(print);
-}
-
+/// ✅ 도보 경로 함수
 Future<List<String>> getWalkingRoute(Map<String, double> start, Map<String, double> end, String apiKey) async {
   final url = 'https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1&format=json';
   final headers = {
@@ -72,41 +56,74 @@ Future<List<String>> getWalkingRoute(Map<String, double> start, Map<String, doub
   return guideTexts;
 }
 
+/// ✅ 대중교통 경로 함수
 Future<List<String>> getTransitRoute(Map<String, double> start, Map<String, double> end, String apiKey) async {
-  final url =
-      'https://apis.openapi.sk.com/transit/routes?version=1&format=json'
-      '&startX=${start['lng']}&startY=${start['lat']}'
-      '&endX=${end['lng']}&endY=${end['lat']}';
+  final url = 'https://apis.openapi.sk.com/transit/routes?version=1&format=json';
 
   final headers = {
     'accept': 'application/json',
-    'appKey': apiKey, // Authorization → appKey 수정
+    'Content-Type': 'application/json',
+    'appKey': apiKey.trim(),
   };
 
-  final response = await http.get(Uri.parse(url), headers: headers);
+  final body = jsonEncode({
+    'startX': start['lng'].toString(),
+    'startY': start['lat'].toString(),
+    'endX': end['lng'].toString(),
+    'endY': end['lat'].toString(),
+    'lang': 0,
+    'format': 'json',
+  });
 
-  print("📡 대중교통 응답 코드: ${response.statusCode}");
-  print("📦 대중교통 응답 본문:\n${response.body}");
+  final response = await http.post(Uri.parse(url), headers: headers, body: body);
+
+  print("📡 응답 코드: ${response.statusCode}");
+  print("📦 응답 본문:\n${response.body}");
 
   List<String> guideTexts = [];
 
   if (response.statusCode == 200) {
     final data = json.decode(response.body);
-    final itinerary = data['metaData']['plan']['itineraries'][0];
-    final timeMin = (itinerary['totalTime'] / 60).round();
-    final fare = itinerary['totalFare']['regular']['totalFare'];
 
-    guideTexts.add("대중교통 예상 시간: ${timeMin}분 / 요금: ${fare}원");
+    final plan = data['metaData']?['plan'];
+    if (plan == null || plan['itineraries'] == null || plan['itineraries'].isEmpty) {
+      guideTexts.add("❗ 대중교통 경로를 찾을 수 없습니다.");
+      return guideTexts;
+    }
+
+    final itinerary = plan['itineraries'][0];
+    final timeMin = (itinerary['totalTime'] / 60).round();
+
+    guideTexts.add("🚌 대중교통 예상 시간은 약 ${timeMin}분입니다.");
 
     for (final leg in itinerary['legs']) {
       final sectionType = leg['mode'];
-      final sectionInfo = leg['route'] ?? leg['start']['name'];
+      final sectionInfo = leg['route'] ?? leg['start']?['name'] ?? '';
       final sectionTime = leg['sectionTime'];
-      guideTexts.add(" - [$sectionType] $sectionInfo (${sectionTime}분)");
+      guideTexts.add(" - ${sectionType}을 이용해 ${sectionInfo}까지 ${sectionTime}분 이동");
     }
   } else {
-    guideTexts.add('대중교통 실패: ${response.statusCode}');
+    guideTexts.add('🚫 대중교통 탐색 실패: ${response.statusCode}');
   }
 
   return guideTexts;
+}
+
+
+
+/// ✅ main 함수는 마지막에!
+Future<void> main() async {
+  final start = {'lat': 37.5665, 'lng': 126.9780}; // 서울 시청
+  final end = {'lat': 37.5547, 'lng': 126.9706};   // 서울역
+
+  print('📍 출발지: ${start['lat']}, ${start['lng']}');
+  print('📍 도착지: ${end['lat']}, ${end['lng']}');
+
+  final walking = await getWalkingRoute(start, end, tmapApiKey);
+  print('\n🚶 도보 경로 결과:');
+  walking.forEach(print);
+
+  final transit = await getTransitRoute(start, end, tmapApiKey);
+  print('\n🚌 대중교통 경로 결과:');
+  transit.forEach(print);
 }

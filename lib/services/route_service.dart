@@ -1,13 +1,30 @@
 import 'dart:convert';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart'; // ✅ dotenv 추가
 
-final String tmapApiKey = dotenv.env['TMAP_API_KEY'] ?? ''; // ✅ 키 불러오기
+// ✅ 직접 API 키 입력
+const String tmapApiKey = 'Jpdc9otrzA2ZTXkYregN2akyQFKvDUYa6iJFWaGW';
 
-/// 🚶 도보 경로 탐색
+/// ✅ 경로 옵션 Enum
+enum RouteOptionType {
+  walkingOnly,
+  integrated,
+  publicOnly,
+  minimumTransfer,
+  shortestTime,
+}
+
+const Map<RouteOptionType, String> routeOptionLabel = {
+  RouteOptionType.walkingOnly: "도보 위주",
+  RouteOptionType.integrated: "도보 + 대중교통",
+  RouteOptionType.publicOnly: "대중교통 위주",
+  RouteOptionType.minimumTransfer: "최소 환승",
+  RouteOptionType.shortestTime: "최단 시간",
+};
+
+/// 🚶 도보 경로 탐색 함수
 Future<List<String>> getWalkingRoute(NLatLng start, NLatLng end) async {
-  final url = 'https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1&format=json';
+  const url = 'https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1&format=json';
 
   final headers = {
     'appKey': tmapApiKey,
@@ -49,7 +66,10 @@ Future<List<String>> getWalkingRoute(NLatLng start, NLatLng end) async {
         final type = feature['geometry']['type'];
         final props = feature['properties'];
         if (type == 'Point' && props['description'] != null) {
-          guideTexts.add("🔹 ${props['description']}");
+          final desc = props['description'] as String;
+          if (!desc.contains('lineString')) {
+            guideTexts.add("🔹 $desc");
+          }
         }
       }
     } else {
@@ -62,12 +82,32 @@ Future<List<String>> getWalkingRoute(NLatLng start, NLatLng end) async {
   return guideTexts;
 }
 
-/// 🚌 대중교통 경로 탐색
-Future<List<String>> getTransitRoute(NLatLng start, NLatLng end) async {
-  final url =
-      'https://apis.openapi.sk.com/transit/routes?version=1&format=json'
-      '&startX=${start.longitude}&startY=${start.latitude}'
-      '&endX=${end.longitude}&endY=${end.latitude}';
+/// 🧭 대중교통 URL 생성 함수
+String buildTransitUrl(NLatLng start, NLatLng end, RouteOptionType option) {
+  String searchType = '0';
+  switch (option) {
+    case RouteOptionType.minimumTransfer:
+      searchType = '1';
+      break;
+    case RouteOptionType.shortestTime:
+      searchType = '2';
+      break;
+    default:
+      searchType = '0';
+  }
+  return 'https://apis.openapi.sk.com/transit/routes?version=1&format=json'
+         '&startX=${start.longitude}&startY=${start.latitude}'
+         '&endX=${end.longitude}&endY=${end.latitude}'
+         '&searchType=$searchType';
+}
+
+/// 🚌 대중교통 경로 탐색 (옵션 기반)
+Future<List<String>> getTransitRouteByType(
+  NLatLng start,
+  NLatLng end,
+  RouteOptionType option,
+) async {
+  final url = buildTransitUrl(start, end, option);
 
   final headers = {
     'accept': 'application/json',
@@ -81,19 +121,51 @@ Future<List<String>> getTransitRoute(NLatLng start, NLatLng end) async {
     final data = json.decode(response.body);
     final itinerary = data['metaData']['plan']['itineraries'][0];
     final timeMin = (itinerary['totalTime'] / 60).round();
-    final fare = itinerary['totalFare']['regular']['totalFare'];
-
-    guideTexts.add("🚌 대중교통 예상 시간: ${timeMin}분 / 요금: ${fare}원");
+    guideTexts.add("🚌 예상 소요 시간: ${timeMin}분");
 
     for (final leg in itinerary['legs']) {
-      final sectionType = leg['mode'];
-      final sectionInfo = leg['route'] ?? leg['start']['name'];
+      final mode = leg['mode'];
       final sectionTime = leg['sectionTime'];
-      guideTexts.add(" - [$sectionType] $sectionInfo (${sectionTime}분)");
+
+      if (mode == 'WALK') {
+        final distance = leg['distance'];
+        guideTexts.add("🚶 ${distance}m 도보 이동 (${sectionTime}분)");
+      } else if (mode == 'BUS') {
+        final busNo = leg['route'];
+        final startName = leg['start']['name'];
+        final endName = leg['end']['name'];
+        final stationCount = leg['passStopList']['stations'].length;
+        guideTexts.add("🚌 ${startName}에서 ${busNo}번 버스 탑승 후 ${stationCount}개 정류장 이동, ${endName}에서 하차");
+      } else if (mode == 'SUBWAY') {
+        final subwayNo = leg['route'];
+        final startName = leg['start']['name'];
+        final endName = leg['end']['name'];
+        guideTexts.add("🚇 ${startName}에서 ${subwayNo} 지하철 탑승 후 ${endName}에서 하차");
+      }
     }
   } else {
     guideTexts.add('🚫 대중교통 실패: ${response.statusCode}');
   }
 
   return guideTexts;
+}
+
+/// 🔀 통합 경로 탐색 함수
+Future<List<String>> getRouteByOption(
+  NLatLng start,
+  NLatLng end,
+  RouteOptionType option,
+) async {
+  switch (option) {
+    case RouteOptionType.walkingOnly:
+      return await getWalkingRoute(start, end);
+    case RouteOptionType.publicOnly:
+    case RouteOptionType.minimumTransfer:
+    case RouteOptionType.shortestTime:
+      return await getTransitRouteByType(start, end, option);
+    case RouteOptionType.integrated:
+      final walk = await getWalkingRoute(start, end);
+      final transit = await getTransitRouteByType(start, end, RouteOptionType.shortestTime);
+      return [...walk, ...transit];
+  }
 }
