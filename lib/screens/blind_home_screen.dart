@@ -197,11 +197,11 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
                       );
                     },
                     child: Container(
-                      height: 80, // 버튼 높이 조정
+                      height: 80, // 버튼 높이
                       alignment: Alignment.center,
                       child: Text(
                         item['label'],
-                        style: const TextStyle(fontSize: 30), // 폰트 크기도 키움
+                        style: const TextStyle(fontSize: 25), // 폰트 크기
                       ),
                     ),
                   ),
