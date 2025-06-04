@@ -4,8 +4,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_messaging/firebase_messaging.dart'; // FCM 알림 수신용
-import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore 추가
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 
 class GuardianHomeScreen extends StatefulWidget {
@@ -20,19 +20,15 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   NLatLng? _currentLocation;
   final AuthService _authService = AuthService();
 
-  NMarker? _blindUserMarker; // ✅ 시각장애인 마커 변수 추가
-  StreamSubscription<DocumentSnapshot>?
-  _locationSubscription; // ✅ 실시간 위치 구독 변수 추가
+  NMarker? _blindUserMarker;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _getCurrentLocation();
-      _initFCM(); // FCM 초기화 추가
-      _checkPendingSos(); // 실행 시 SOS 확인 추가
+      _initFCM();
       _saveFcmToken();
-      _subscribeToBlindUserLocation(); // ✅ 위치 구독 시작
     });
   }
 
@@ -46,7 +42,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     }
   }
 
-  // Firebase Cloud Messaging 수신 및 팝업 알림 표시
   void _initFCM() async {
     await FirebaseMessaging.instance.requestPermission();
 
@@ -71,55 +66,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             ),
       );
     });
-  }
-
-  // 실행 시 SOS 수신 이력 확인
-  Future<void> _checkPendingSos() async {
-    final guardianUid = FirebaseAuth.instance.currentUser?.uid;
-    if (guardianUid == null) return;
-
-    final guardianDoc =
-        await FirebaseFirestore.instance
-            .collection('guardians')
-            .doc(guardianUid)
-            .get();
-
-    if (!guardianDoc.exists) return;
-    final linkedUserUid = guardianDoc.data()?['linked_user_uid'];
-    if (linkedUserUid == null) return;
-
-    final sosSnapshot =
-        await FirebaseFirestore.instance
-            .collection('sos_signals')
-            .where('user', isEqualTo: linkedUserUid)
-            .orderBy('timestamp', descending: true)
-            .limit(1)
-            .get();
-
-    if (sosSnapshot.docs.isEmpty) return;
-
-    final latest = sosSnapshot.docs.first;
-    final timestamp = latest['timestamp'] as Timestamp;
-    final now = DateTime.now();
-
-    if (now.difference(timestamp.toDate()).inMinutes < 10) {
-      if (!mounted) return;
-      showDialog(
-        context: context,
-        barrierDismissible: false, // 확인 전까지 팝업 유지
-        builder:
-            (_) => AlertDialog(
-              title: const Text('긴급신호 수신'),
-              content: const Text('연결된 시각장애인이 SOS 버튼을 눌렀습니다.'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('확인'),
-                ),
-              ],
-            ),
-      );
-    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -147,11 +93,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         debugPrint('❌ 위치 가져오기 실패: $e');
         _showErrorSnackBar('위치 정보를 가져오지 못했습니다.');
       }
-    } else if (status.isDenied || status.isPermanentlyDenied) {
+    } else {
       _showErrorSnackBar('위치 권한이 필요합니다. 설정에서 허용해주세요.');
       openAppSettings();
-    } else {
-      _showErrorSnackBar('위치 권한 상태: $status');
     }
   }
 
@@ -163,8 +107,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     }
   }
 
-  Future<void> _subscribeToBlindUserLocation() async {
-    // ✅ 위치 구독 함수 추가
+  Future<void> _refreshBlindUserLocation() async {
     final guardianUid = FirebaseAuth.instance.currentUser?.uid;
     if (guardianUid == null) return;
 
@@ -174,50 +117,88 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             .doc(guardianUid)
             .get();
 
-    final linkedUserKey = guardianDoc.data()?['linked_user_code'];
-    if (linkedUserKey == null) return;
+    final linkedUserCode = guardianDoc.data()?['linked_user_code'];
+    if (linkedUserCode == null) return;
 
-    _locationSubscription?.cancel();
+    // 🔥 수정된 부분 시작
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('locations')
+            .where(FieldPath.documentId, isGreaterThanOrEqualTo: linkedUserCode)
+            .orderBy(FieldPath.documentId, descending: true)
+            .limit(1)
+            .get();
 
-    _locationSubscription = FirebaseFirestore.instance
-        .collection('locations')
-        .doc(linkedUserKey)
-        .snapshots()
-        .listen((snapshot) async {
-          if (!snapshot.exists) return;
+    if (snapshot.docs.isEmpty) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder:
+            (_) => AlertDialog(
+              title: const Text('위치 정보 없음'),
+              content: const Text('시각장애인의 위치 정보를 찾을 수 없습니다.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('확인'),
+                ),
+              ],
+            ),
+      );
+      return;
+    }
 
-          final data = snapshot.data();
-          if (data == null) return;
+    final locationDoc = snapshot.docs.first;
+    // 🔥 수정된 부분 끝
 
-          final lat = data['lat'];
-          final lng = data['lng'];
+    if (!(locationDoc.data()['location_shared'] ?? false)) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder:
+            (_) => AlertDialog(
+              title: const Text('위치 공유 꺼짐'),
+              content: const Text('시각장애인이 위치 공유를 허용하지 않았습니다.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('확인'),
+                ),
+              ],
+            ),
+      );
+      return;
+    }
 
-          final blindLatLng = NLatLng(lat, lng);
-          final controller = await _controller.future;
+    final lat = locationDoc['lat'];
+    final lng = locationDoc['lng'];
+    final timestamp = (locationDoc['timestamp'] as Timestamp?)?.toDate();
+    final position = NLatLng(lat, lng);
+    final controller = await _controller.future;
 
-          final marker = NMarker(
-            id: 'blind_marker',
-            position: blindLatLng,
-            caption: NOverlayCaption(text: '시각장애인 위치'),
-          );
+    final formattedTime =
+        timestamp != null
+            ? '${timestamp.year}년 ${timestamp.month}월 ${timestamp.day}일 ${timestamp.hour}시 ${timestamp.minute}분'
+            : '시간 정보 없음';
 
-          // ✅ 기존 마커 제거
-          if (_blindUserMarker != null) {
-            await controller.deleteOverlay(_blindUserMarker!.info);
-          }
+    final newMarker = NMarker(
+      id: 'blind_marker',
+      position: position,
+      caption: NOverlayCaption(text: '시각장애인 위치 ($formattedTime)'),
+    );
 
-          // ✅ 새 마커 추가
-          await controller.addOverlay(marker);
+    if (_blindUserMarker != null) {
+      await controller.deleteOverlay(_blindUserMarker!.info);
+    }
 
-          // ✅ 자동 카메라 이동 추가
-          await controller.updateCamera(
-            NCameraUpdate.withParams(target: blindLatLng, zoom: 16),
-          );
+    await controller.addOverlay(newMarker);
+    await controller.updateCamera(
+      NCameraUpdate.withParams(target: position, zoom: 16),
+    );
 
-          setState(() {
-            _blindUserMarker = marker;
-          });
-        });
+    setState(() {
+      _blindUserMarker = newMarker;
+    });
   }
 
   void _handleMenu(String value) async {
@@ -239,7 +220,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             ),
             actions: [
               TextButton(
-                // ✅ 고유번호 등록 시 Firestore에 연결 정보 저장
                 onPressed: () async {
                   final code = idController.text.trim();
                   if (code.isEmpty) return;
@@ -258,7 +238,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                       return;
                     }
 
-                    // 고유번호 유효함
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('유효한 고유번호입니다.')),
                     );
@@ -275,7 +254,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                           'linked_user_uid': blindData['uid'],
                         }, SetOptions(merge: true));
 
-                    // ✅ 시각장애인 문서에도 보호자 UID 저장 (양방향 연동)
                     await FirebaseFirestore.instance
                         .collection('blind_users')
                         .doc(code)
@@ -296,13 +274,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           );
         },
       );
+    } else if (value == 'refresh') {
+      await _refreshBlindUserLocation();
     }
-  }
-
-  @override
-  void dispose() {
-    _locationSubscription?.cancel(); // ✅ 위치 구독 해제
-    super.dispose();
   }
 
   @override
@@ -320,6 +294,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 (context) => const [
                   PopupMenuItem(value: 'logout', child: Text('로그아웃')),
                   PopupMenuItem(value: 'connect', child: Text('고유번호 입력')),
+                  PopupMenuItem(value: 'refresh', child: Text('위치 새로고침')),
                 ],
           ),
         ],
@@ -334,10 +309,10 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                     target: _currentLocation!,
                     zoom: 16,
                   ),
-                  mapType: NMapType.basic, // ✅ 지도 기본타입 지정
-                  liteModeEnable: false, // ✅ 경량 모드 끄기 (타일 생략 방지)
+                  mapType: NMapType.basic,
+                  liteModeEnable: false,
                   locationButtonEnable: true,
-                  indoorEnable: true, // ✅ 실내지도 가능 (선택)
+                  indoorEnable: true,
                 ),
               ),
     );

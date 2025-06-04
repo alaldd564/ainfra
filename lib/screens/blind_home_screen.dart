@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ Firestore 추가
-import 'package:geolocator/geolocator.dart'; // ✅ 위치 측정 추가
-import 'package:permission_handler/permission_handler.dart'; // ✅ 권한 요청 추가
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../services/auth_service.dart';
-import 'dart:async'; // ✅ Timer 추가
-import 'left_sos_screen.dart';
+import 'dart:async';
+import 'location_share_screen.dart';
 import 'right_settings_screen.dart';
 import 'top_taxi_screen.dart';
 import 'bottom_naviate_screen.dart';
-import 'tmap_launch_screen.dart'; // ✅ 추가
+import 'tmap_launch_screen.dart';
 
 class BlindHomeScreen extends StatefulWidget {
   const BlindHomeScreen({super.key});
@@ -23,50 +23,93 @@ class BlindHomeScreen extends StatefulWidget {
 class _BlindHomeScreenState extends State<BlindHomeScreen> {
   static final AuthService _authService = AuthService();
   final FlutterTts _tts = FlutterTts();
+  String? _generatedId;
 
   @override
   void initState() {
     super.initState();
-    _startLocationUpload(); // ✅ 위치 업로드 시작
+    _fetchGeneratedIdAndStartLocationUpload();
   }
 
-  // ✅ 위치 권한 요청 및 Firestore 업로드 함수
-  Future<void> _startLocationUpload() async {
-    final status = await Permission.location.request();
+  Future<void> _fetchGeneratedIdAndStartLocationUpload() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
 
-    if (status.isGranted) {
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('blind_users')
+            .where('uid', isEqualTo: uid)
+            .limit(1)
+            .get();
+
+    if (snapshot.docs.isEmpty) {
+      final guardianLinkDoc =
+          await FirebaseFirestore.instance
+              .collection('guardians')
+              .where('linked_user_uid', isEqualTo: uid)
+              .limit(1)
+              .get();
+
+      final generatedId = guardianLinkDoc.docs.first.data()['linked_user_code'];
+
+      await FirebaseFirestore.instance
+          .collection('blind_users')
+          .doc(generatedId)
+          .set({
+            'uid': uid,
+            'user_key': '',
+            'created_at': FieldValue.serverTimestamp(),
+          });
+
+      _generatedId = generatedId;
+      print('🆕 생성된 고유번호: $_generatedId');
+    } else {
+      _generatedId = snapshot.docs.first.id;
+      print('📍 기존 고유번호 로드: $_generatedId');
+    }
+
+    void _startLocationUpload() async {
+      final status = await Permission.location.request();
+
+      if (!status.isGranted) {
+        debugPrint('위치 권한이 거부되었습니다.');
+        return;
+      }
+
       Timer.periodic(const Duration(seconds: 10), (_) async {
         try {
+          final uid = FirebaseAuth.instance.currentUser?.uid;
+          if (uid == null || _generatedId == null) return;
+
+          final doc = FirebaseFirestore.instance
+              .collection('locations')
+              .doc(_generatedId!);
+
+          final snapshot = await doc.get();
+          final shared = snapshot.data()?['location_shared'] ?? false;
+          if (!shared) {
+            print('🚫 위치 공유 꺼짐 - 업로드 안 함');
+            return;
+          }
+
           final position = await Geolocator.getCurrentPosition();
 
-          final uid = FirebaseAuth.instance.currentUser?.uid;
-          if (uid == null) return;
+          print('📍 위치 업로드 시작: ${position.latitude}, ${position.longitude}');
 
-          final snapshot =
-              await FirebaseFirestore.instance
-                  .collection('blind_users')
-                  .where('uid', isEqualTo: uid)
-                  .limit(1)
-                  .get();
-
-          if (snapshot.docs.isEmpty) return;
-          final docId = snapshot.docs.first.id;
-
-          await FirebaseFirestore.instance
-              .collection('locations')
-              .doc(docId)
-              .set({
-                'lat': position.latitude,
-                'lng': position.longitude,
-                'timestamp': FieldValue.serverTimestamp(),
-              }, SetOptions(merge: true));
+          await doc.set({
+            'lat': position.latitude,
+            'lng': position.longitude,
+            'timestamp': FieldValue.serverTimestamp(),
+            'last_active': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+          print('✅ 위치 업로드 성공: $_generatedId');
         } catch (e) {
-          debugPrint('위치 전송 오류: \$e');
+          print('❌ 위치 업로드 실패: $e');
         }
       });
-    } else {
-      debugPrint('위치 권한이 거부되었습니다.');
     }
+
+    _startLocationUpload();
   }
 
   Future<void> _handleSwipe(
@@ -85,8 +128,8 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
         nextScreen = const RightSettingsScreen();
         screenName = '설정 화면';
       } else {
-        nextScreen = const LeftSosScreen();
-        screenName = 'SOS 호출 화면';
+        nextScreen = const LocationShareScreen();
+        screenName = '위치 공유 화면';
       }
     } else {
       if (vy > 0) {
@@ -116,28 +159,25 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
   void _handleMenu(BuildContext context, String value) async {
     switch (value) {
       case 'logout':
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        if (uid != null && _generatedId != null) {
+          try {
+            await FirebaseFirestore.instance
+                .collection('locations')
+                .doc(_generatedId)
+                .set({
+                  'last_active': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true));
+            debugPrint('📤 로그아웃 전 last_active 저장 완료');
+          } catch (e) {
+            debugPrint('⚠️ 로그아웃 전 상태 저장 실패: $e');
+          }
+        }
+
         await _authService.signOut();
         if (context.mounted) {
           Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
         }
-        break;
-
-      case 'help':
-        if (!context.mounted) return;
-        showDialog(
-          context: context,
-          builder:
-              (context) => AlertDialog(
-                title: const Text('도움말'),
-                content: const Text('화면을 상하좌우로 스와이프하면 기능을 이동할 수 있습니다.'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('닫기'),
-                  ),
-                ],
-              ),
-        );
         break;
 
       case 'generate_id':
@@ -146,11 +186,10 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
         final generatedId = '${uid}_$timestamp';
 
         await FirebaseFirestore.instance
-            .collection('blind_users')
+            .collection('locations')
             .doc(generatedId)
             .set({
-              'uid': uid,
-              'user_key': '',
+              'location_shared': false,
               'created_at': FieldValue.serverTimestamp(),
             });
 
@@ -213,7 +252,6 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
               style: TextStyle(color: Color(0xFFFFE51F), fontSize: 20),
             ),
           ),
-
           const SizedBox(height: 10),
           ElevatedButton(
             onPressed: () {
@@ -234,7 +272,6 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
             ),
             child: const Text('지도 테스트 화면 이동'),
           ),
-
           const Spacer(),
           Center(
             child: GestureDetector(
