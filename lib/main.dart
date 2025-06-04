@@ -9,10 +9,11 @@ import 'screens/guardian_screen.dart';
 import 'screens/right_settings_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:maptest/screens/brightness_settings.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   runApp(

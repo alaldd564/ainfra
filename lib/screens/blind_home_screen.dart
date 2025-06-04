@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_tts/flutter_tts.dart';
+// import 'package:flutter_tts/flutter_tts.dart';  // TTS 비활성화
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../services/auth_service.dart';
@@ -20,7 +20,7 @@ class BlindHomeScreen extends StatefulWidget {
 
 class _BlindHomeScreenState extends State<BlindHomeScreen> {
   static final AuthService _authService = AuthService();
-  final FlutterTts _tts = FlutterTts();
+  // final FlutterTts _tts = FlutterTts(); // TTS 비활성화
   double _speechRate = 0.5;
   bool _ttsEnabled = true;
 
@@ -47,6 +47,7 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
     },
   ];
 
+  /*
   Future<void> _speak(String text) async {
     if (!_ttsEnabled) return;
     await _tts.setLanguage("ko-KR");
@@ -54,6 +55,7 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
     await _tts.awaitSpeakCompletion(true);
     await _tts.speak(text);
   }
+  */
 
   void _handleMenu(BuildContext context, String value) async {
     switch (value) {
@@ -188,7 +190,7 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
                   color: Colors.yellow[100],
                   child: InkWell(
                     onTap: () async {
-                      await _speak('${item['label']}화면으로 이동합니다');
+                      // await _speak('${item['label']}화면으로 이동합니다'); // TTS 호출 주석 처리
                       await Future.delayed(const Duration(milliseconds: 500));
                       if (!context.mounted) return;
                       Navigator.push(
@@ -197,11 +199,11 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
                       );
                     },
                     child: Container(
-                      height: 80, // 버튼 높이
+                      height: 80,
                       alignment: Alignment.center,
                       child: Text(
                         item['label'],
-                        style: const TextStyle(fontSize: 25), // 폰트 크기
+                        style: const TextStyle(fontSize: 30),
                       ),
                     ),
                   ),

@@ -4,9 +4,11 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:8.2.0")              // ✅ AGP 명시
-        classpath("com.google.gms:google-services:4.3.15")             // ✅ Firebase Google Services
-    }
+    classpath("com.android.tools.build:gradle:8.2.0")
+    classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.10") // ✅ 이 줄 추가
+    classpath("com.google.gms:google-services:4.3.15")
+}
+
 }
 
 // ✅ 전체 프로젝트용 리포지토리 설정
