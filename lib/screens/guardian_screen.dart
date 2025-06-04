@@ -120,38 +120,14 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     final linkedUserCode = guardianDoc.data()?['linked_user_code'];
     if (linkedUserCode == null) return;
 
-    // 🔥 수정된 부분 시작
-    final snapshot =
+    final locationDoc =
         await FirebaseFirestore.instance
             .collection('locations')
-            .where(FieldPath.documentId, isGreaterThanOrEqualTo: linkedUserCode)
-            .orderBy(FieldPath.documentId, descending: true)
-            .limit(1)
+            .doc(linkedUserCode) // ✅ 정확히 문서 ID로 조회
             .get();
 
-    if (snapshot.docs.isEmpty) {
-      if (!mounted) return;
-      showDialog(
-        context: context,
-        builder:
-            (_) => AlertDialog(
-              title: const Text('위치 정보 없음'),
-              content: const Text('시각장애인의 위치 정보를 찾을 수 없습니다.'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('확인'),
-                ),
-              ],
-            ),
-      );
-      return;
-    }
-
-    final locationDoc = snapshot.docs.first;
-    // 🔥 수정된 부분 끝
-
-    if (!(locationDoc.data()['location_shared'] ?? false)) {
+    if (!locationDoc.exists ||
+        !(locationDoc.data()?['location_shared'] ?? false)) {
       if (!mounted) return;
       showDialog(
         context: context,
@@ -173,6 +149,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     final lat = locationDoc['lat'];
     final lng = locationDoc['lng'];
     final timestamp = (locationDoc['timestamp'] as Timestamp?)?.toDate();
+
     final position = NLatLng(lat, lng);
     final controller = await _controller.future;
 

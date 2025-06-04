@@ -24,6 +24,7 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
   static final AuthService _authService = AuthService();
   final FlutterTts _tts = FlutterTts();
   String? _generatedId;
+  bool _locationShared = false;
 
   @override
   void initState() {
@@ -68,48 +69,54 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
       print('📍 기존 고유번호 로드: $_generatedId');
     }
 
-    void _startLocationUpload() async {
-      final status = await Permission.location.request();
+    // ✅ Firestore에서 location_shared 값 로딩
+    final locDoc =
+        await FirebaseFirestore.instance
+            .collection('locations')
+            .doc(_generatedId!)
+            .get();
 
-      if (!status.isGranted) {
-        debugPrint('위치 권한이 거부되었습니다.');
-        return;
-      }
-
-      Timer.periodic(const Duration(seconds: 10), (_) async {
-        try {
-          final uid = FirebaseAuth.instance.currentUser?.uid;
-          if (uid == null || _generatedId == null) return;
-
-          final doc = FirebaseFirestore.instance
-              .collection('locations')
-              .doc(_generatedId!);
-
-          final snapshot = await doc.get();
-          final shared = snapshot.data()?['location_shared'] ?? false;
-          if (!shared) {
-            print('🚫 위치 공유 꺼짐 - 업로드 안 함');
-            return;
-          }
-
-          final position = await Geolocator.getCurrentPosition();
-
-          print('📍 위치 업로드 시작: ${position.latitude}, ${position.longitude}');
-
-          await doc.set({
-            'lat': position.latitude,
-            'lng': position.longitude,
-            'timestamp': FieldValue.serverTimestamp(),
-            'last_active': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
-          print('✅ 위치 업로드 성공: $_generatedId');
-        } catch (e) {
-          print('❌ 위치 업로드 실패: $e');
-        }
-      });
-    }
+    _locationShared = locDoc.data()?['location_shared'] ?? false;
+    print('📥 위치 공유 상태 로드됨: $_locationShared');
 
     _startLocationUpload();
+  }
+
+  void _startLocationUpload() async {
+    final status = await Permission.location.request();
+
+    if (!status.isGranted) {
+      debugPrint('위치 권한이 거부되었습니다.');
+      return;
+    }
+
+    Timer.periodic(const Duration(seconds: 10), (_) async {
+      try {
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        if (uid == null || _generatedId == null) return;
+
+        if (!_locationShared) {
+          print('🚫 위치 공유 꺼짐 - 업로드 안 함');
+          return;
+        }
+
+        final position = await Geolocator.getCurrentPosition();
+
+        await FirebaseFirestore.instance
+            .collection('locations')
+            .doc(_generatedId!)
+            .set({
+              'lat': position.latitude,
+              'lng': position.longitude,
+              'timestamp': FieldValue.serverTimestamp(),
+              'last_active': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+
+        print('✅ 위치 업로드 성공');
+      } catch (e) {
+        print('❌ 위치 업로드 실패: $e');
+      }
+    });
   }
 
   Future<void> _handleSwipe(
@@ -166,8 +173,9 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
                 .collection('locations')
                 .doc(_generatedId)
                 .set({
-                  'last_active': FieldValue.serverTimestamp(),
-                }, SetOptions(merge: true));
+                  'location_shared': false, // 🔥 반드시 false로 초기화
+                  'created_at': FieldValue.serverTimestamp(),
+                });
             debugPrint('📤 로그아웃 전 last_active 저장 완료');
           } catch (e) {
             debugPrint('⚠️ 로그아웃 전 상태 저장 실패: $e');
