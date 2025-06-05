@@ -5,11 +5,12 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../services/auth_service.dart';
+import '../services/location_service.dart'; // ✅ 위치 서비스 임포트
 import 'left_sos_screen.dart';
 import 'right_settings_screen.dart';
 import 'top_taxi_screen.dart';
 import 'bottom_naviate_screen.dart';
-import 'tmap_launch_screen.dart'; // ✅ 추가
+import 'tmap_launch_screen.dart';
 
 class BlindHomeScreen extends StatefulWidget {
   const BlindHomeScreen({super.key});
@@ -21,6 +22,19 @@ class BlindHomeScreen extends StatefulWidget {
 class _BlindHomeScreenState extends State<BlindHomeScreen> {
   static final AuthService _authService = AuthService();
   final FlutterTts _tts = FlutterTts();
+
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ 위치 전송 서비스 시작 (userId는 예시)
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      LocationService().startTrackingAndSend(userId: user.uid);
+    } else {
+      print("❌ 사용자 인증 정보 없음");
+    }
+  }
 
   Future<void> _handleSwipe(
     BuildContext context,
@@ -163,7 +177,6 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
               style: TextStyle(color: Color(0xFFFFE51F), fontSize: 20),
             ),
           ),
-
           const SizedBox(height: 10),
           ElevatedButton(
             onPressed: () {
@@ -182,7 +195,6 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
             ),
             child: const Text('지도 테스트 화면 이동'),
           ),
-
           const Spacer(),
           Center(
             child: GestureDetector(

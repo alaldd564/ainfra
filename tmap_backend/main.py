@@ -8,6 +8,9 @@ TMAP_API_KEY = "gvtcaFKZy01ZmlWn54hMQazLlazJ0a051IsKZCYc"
 
 app = FastAPI()
 
+# ✅ 위치 저장용 메모리 (user_id 기준)
+user_locations = {}
+
 # 1. 서버 상태 확인용
 @app.get("/ping")
 def ping():
@@ -27,7 +30,26 @@ async def update_location(location: Location):
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     print(f"[{timestamp}] 위치 수신 - ID: {location.user_id}, "
           f"위도: {location.latitude}, 경도: {location.longitude}")
-    return {"message": "위치 수신 완료", "timestamp": timestamp}
+
+    # ✅ 메모리에 위치 저장
+    user_locations[location.user_id] = {
+        "latitude": location.latitude,
+        "longitude": location.longitude,
+        "timestamp": timestamp
+    }
+
+    return {"message": "위치 수신 및 저장 완료", "timestamp": timestamp}
+
+# 🔍 보호자용: 고유번호로 위치 조회
+@app.get("/get_location")
+def get_location(user_id: str = Query(..., description="시각장애인 고유번호")):
+    if user_id not in user_locations:
+        raise HTTPException(status_code=404, detail="해당 고유번호의 위치 정보가 없습니다.")
+
+    return {
+        "user_id": user_id,
+        "location": user_locations[user_id]
+    }
 
 # 3. 도보 경로 요청
 @app.get("/route/walking")
