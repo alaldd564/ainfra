@@ -1,27 +1,23 @@
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 import requests
-import os
 import time
-from dotenv import load_dotenv
 
-# .env 파일 로드
-load_dotenv()
-TMAP_API_KEY = os.getenv("TMAP_API_KEY")
+# TMAP API 키 하드코딩
+TMAP_API_KEY = "gvtcaFKZy01ZmlWn54hMQazLlazJ0a051IsKZCYc"
 
 app = FastAPI()
 
-
+# 1. 서버 상태 확인용
 @app.get("/ping")
 def ping():
     return {"status": "ok", "message": "TMAP 백엔드가 살아 있습니다."}
 
-
+# 2. 실시간 위치 수신용 모델 정의
 class Location(BaseModel):
     user_id: str
     latitude: float
     longitude: float
-
 
 @app.post("/update_location")
 async def update_location(location: Location):
@@ -33,7 +29,7 @@ async def update_location(location: Location):
           f"위도: {location.latitude}, 경도: {location.longitude}")
     return {"message": "위치 수신 완료", "timestamp": timestamp}
 
-
+# 3. 도보 경로 요청
 @app.get("/route/walking")
 def walking_route(
     startX: float = Query(...),
@@ -62,7 +58,7 @@ def walking_route(
         raise HTTPException(status_code=res.status_code, detail=res.text)
     return res.json()
 
-
+# 4. 대중교통 경로 요청
 @app.get("/route/transit")
 def transit_route(
     startX: float = Query(...),
