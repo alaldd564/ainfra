@@ -3,10 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
+//import 'package:geolocator/geolocator.dart';
+//import 'package:permission_handler/permission_handler.dart';
 import '../services/auth_service.dart';
-import 'dart:async';
 import 'location_share_screen.dart';
 import 'right_settings_screen.dart';
 import 'top_taxi_screen.dart';
@@ -23,101 +22,8 @@ class BlindHomeScreen extends StatefulWidget {
 class _BlindHomeScreenState extends State<BlindHomeScreen> {
   static final AuthService _authService = AuthService();
   final FlutterTts _tts = FlutterTts();
+
   String? _generatedId;
-  bool _locationShared = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchGeneratedIdAndStartLocationUpload();
-  }
-
-  Future<void> _fetchGeneratedIdAndStartLocationUpload() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-
-    final snapshot =
-        await FirebaseFirestore.instance
-            .collection('blind_users')
-            .where('uid', isEqualTo: uid)
-            .limit(1)
-            .get();
-
-    if (snapshot.docs.isEmpty) {
-      final guardianLinkDoc =
-          await FirebaseFirestore.instance
-              .collection('guardians')
-              .where('linked_user_uid', isEqualTo: uid)
-              .limit(1)
-              .get();
-
-      final generatedId = guardianLinkDoc.docs.first.data()['linked_user_code'];
-
-      await FirebaseFirestore.instance
-          .collection('blind_users')
-          .doc(generatedId)
-          .set({
-            'uid': uid,
-            'user_key': '',
-            'created_at': FieldValue.serverTimestamp(),
-          });
-
-      _generatedId = generatedId;
-      print('🆕 생성된 고유번호: $_generatedId');
-    } else {
-      _generatedId = snapshot.docs.first.id;
-      print('📍 기존 고유번호 로드: $_generatedId');
-    }
-
-    // ✅ Firestore에서 location_shared 값 로딩
-    final locDoc =
-        await FirebaseFirestore.instance
-            .collection('locations')
-            .doc(_generatedId!)
-            .get();
-
-    _locationShared = locDoc.data()?['location_shared'] ?? false;
-    print('📥 위치 공유 상태 로드됨: $_locationShared');
-
-    _startLocationUpload();
-  }
-
-  void _startLocationUpload() async {
-    final status = await Permission.location.request();
-
-    if (!status.isGranted) {
-      debugPrint('위치 권한이 거부되었습니다.');
-      return;
-    }
-
-    Timer.periodic(const Duration(seconds: 10), (_) async {
-      try {
-        final uid = FirebaseAuth.instance.currentUser?.uid;
-        if (uid == null || _generatedId == null) return;
-
-        if (!_locationShared) {
-          print('🚫 위치 공유 꺼짐 - 업로드 안 함');
-          return;
-        }
-
-        final position = await Geolocator.getCurrentPosition();
-
-        await FirebaseFirestore.instance
-            .collection('locations')
-            .doc(_generatedId!)
-            .set({
-              'lat': position.latitude,
-              'lng': position.longitude,
-              'timestamp': FieldValue.serverTimestamp(),
-              'last_active': FieldValue.serverTimestamp(),
-            }, SetOptions(merge: true));
-
-        print('✅ 위치 업로드 성공');
-      } catch (e) {
-        print('❌ 위치 업로드 실패: $e');
-      }
-    });
-  }
 
   Future<void> _handleSwipe(
     BuildContext context,

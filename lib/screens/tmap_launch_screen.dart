@@ -1,3 +1,4 @@
+import 'package:maptest/services/location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:developer' as developer;
@@ -12,8 +13,16 @@ class TmapLaunchScreen extends StatefulWidget {
 class _TmapLaunchScreenState extends State<TmapLaunchScreen> {
   final TextEditingController _originController = TextEditingController();
   final TextEditingController _destinationController = TextEditingController();
+  final LocationService locationService = LocationService(); // ✅ 위치 서비스 인스턴스
 
   static const platform = MethodChannel('tmap_channel');
+
+  @override
+  void initState() {
+    super.initState();
+    // ✅ 앱 실행 시 위치 추적 시작
+    locationService.startTrackingAndSend(userId: "blind001");
+  }
 
   Future<void> _launchMapActivityWithPublicTransitRoute() async {
     final origin = _originController.text.trim();

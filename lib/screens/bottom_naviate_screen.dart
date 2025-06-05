@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
@@ -6,7 +7,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:geocoding/geocoding.dart';
 import 'package:maptest/services/route_service.dart';
-import 'dart:async';
 
 class BottomNavigateScreen extends StatefulWidget {
   const BottomNavigateScreen({super.key});
@@ -104,27 +104,24 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
         final destination = NLatLng(dest.latitude, dest.longitude);
 
         if (_currentLocation != null) {
-          final (guides, pathCoords, markers) = await getWalkingRouteWithPath(
+          final walkingGuides = await getWalkingRoute(
             _currentLocation!,
             destination,
           );
-          final controller = await _mapController.future;
-
-          final polyline = NPolylineOverlay(
-            // 폴리라인 오버레이 생성
-            id: 'walking_path',
-            coords: pathCoords,
-            width: 6,
-            color: Colors.blue,
+          final transitGuides = await getRouteByOption(
+            _currentLocation!,
+            destination,
+            RouteOptionType.shortestTime,
           );
 
-          await controller.addOverlay(polyline); // 지도에 경로 표시
-
-          for (final marker in markers) {
-            await controller.addOverlay(marker); // ✅ 출발/도착 마커 추가 표시
+          if (walkingGuides.isEmpty && transitGuides.isEmpty) {
+            _showErrorDialog('경로를 불러오지 못했습니다.');
+          } else {
+            _showUnifiedRoutePopup(
+              walkingGuides: walkingGuides,
+              transitGuides: transitGuides,
+            );
           }
-
-          _showUnifiedRoutePopup(walkingGuides: guides, transitGuides: []);
         }
       } else {
         _speak("목적지 위치를 찾을 수 없습니다.");
@@ -188,6 +185,23 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('닫기'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('오류'),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('확인'),
               ),
             ],
           ),

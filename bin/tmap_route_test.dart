@@ -1,112 +1,100 @@
-// 📁 bin/tmap_route_test.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-const String tmapApiKey = 'Jpdc9otrzA2ZTXkYregN2akyQFKvDUYa6iJFWaGW';
+const String tmapApiKey = '9OYhsHdVeE15l8mol1UWr7BoQyv5BWvr38k1sXvs';
 
-Future<void> main() async {
-  final start = {'lat': 37.5665, 'lng': 126.9780}; // 서울 시청
-  final end = {'lat': 37.5547, 'lng': 126.9706};   // 서울역
-
-  print('📍 출발지: ${start['lat']}, ${start['lng']}');
-  print('📍 도착지: ${end['lat']}, ${end['lng']}');
-
-  final walking = await getWalkingRoute(start, end);
-  print('\n🚶 도보 경로 결과:');
-  walking.forEach(print);
-
-  final transit = await getTransitRoute(start, end);
-  print('\n🚌 대중교통 경로 결과:');
-  transit.forEach(print);
+String formatSearchTime(DateTime dt) {
+  return "${dt.year.toString().padLeft(4, '0')}"
+         "${dt.month.toString().padLeft(2, '0')}"
+         "${dt.day.toString().padLeft(2, '0')}"
+         "${dt.hour.toString().padLeft(2, '0')}"
+         "${dt.minute.toString().padLeft(2, '0')}";
 }
 
-Future<List<String>> getWalkingRoute(Map<String, double> start, Map<String, double> end) async {
-  final url = 'https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1&format=json';
+Future<List<List<String>>> getAllTransitRoutes(Map<String, double> start, Map<String, double> end) async {
+  final url = 'https://apis.openapi.sk.com/transit/routes?version=1&format=json';
   final headers = {
-    'appKey': tmapApiKey,
+    'accept': 'application/json',
     'Content-Type': 'application/json',
+    'appKey': tmapApiKey,
   };
+
   final body = jsonEncode({
-    'startX': start['lng'].toString(),
-    'startY': start['lat'].toString(),
-    'endX': end['lng'].toString(),
-    'endY': end['lat'].toString(),
-    'reqCoordType': 'WGS84GEO',
-    'resCoordType': 'WGS84GEO',
-    'startName': '출발지',
-    'endName': '도착지',
+    'startX': start['lng'],
+    'startY': start['lat'],
+    'endX': end['lng'],
+    'endY': end['lat'],
+    'lang': 0,
+    'format': 'json',
+    'searchDttm': formatSearchTime(DateTime.now()),
+    'sort': '0',
   });
 
   final response = await http.post(Uri.parse(url), headers: headers, body: body);
-  List<String> guideTexts = [];
+  List<List<String>> allRoutes = [];
 
   if (response.statusCode == 200) {
     final data = json.decode(response.body);
-    final features = data['features'];
-    if (features != null && features.isNotEmpty) {
-      final firstLine = features.firstWhere(
-        (f) => f['geometry']['type'] == 'LineString',
-        orElse: () => null,
-      );
-      if (firstLine != null) {
-        final distance = firstLine['properties']['distance'];
-        final time = firstLine['properties']['time'];
-        final timeMin = (time / 60).round();
-        guideTexts.add("도보 예상 시간: ${timeMin}분, 거리: ${distance}m");
-      }
-      for (final feature in features) {
-        final type = feature['geometry']['type'];
-        final props = feature['properties'];
-        if (type == 'Point' && props['description'] != null) {
-          guideTexts.add(" - ${props['description']}");
+    final itineraries = data['metaData']?['plan']?['itineraries'];
+    if (itineraries == null || itineraries.isEmpty) return [];
+
+    for (final itinerary in itineraries) {
+      List<String> guideTexts = [];
+      final totalTime = (itinerary['totalTime'] / 60).round();
+      final transfers = itinerary['transferCount'];
+      final trafficTypes = itinerary['legs'].map((leg) => leg['mode']).toSet().join(', ');
+      guideTexts.add("⏱️ 총 소요 시간: ${totalTime}분 | 🔁 환승 ${transfers}회 | 🚊 이용수단: ${trafficTypes}");
+
+      final Set<String> seenLegs = {};
+
+      for (final leg in itinerary['legs']) {
+        final mode = leg['mode'];
+        final legKey = "${mode}_${leg['start']['name']}_${leg['end']['name']}";
+
+        if (seenLegs.contains(legKey)) continue;
+        seenLegs.add(legKey);
+
+        if (mode == 'WALK') {
+          final time = leg['sectionTime'];
+          if (time != null && time <= 180) {
+            guideTexts.add("🚶 도보 이동 (${time}분)");
+          }
+        } else if (mode == 'BUS') {
+          final busNo = leg['route'] ?? '알 수 없음';
+          final startStop = leg['start']['name'];
+          final endStop = leg['end']['name'];
+          final stops = leg['passStopList']?['stations']?.length;
+          //final stopText = stops != null ? "${stops}개 정류장" : "정류장 수 알 수 없음";
+          guideTexts.add("🚌 ${startStop}에서 ${busNo}번 버스 탑승  → ${endStop} 하차");
+        } else if (mode == 'SUBWAY') {
+          final line = leg['route'] ?? '알 수 없음';
+          final startStation = leg['start']['name'];
+          final endStation = leg['end']['name'];
+          guideTexts.add("🚇 ${startStation}역에서 ${line}호선 탑승 → ${endStation}역 하차");
         }
       }
-    } else {
-      guideTexts.add("도보 경로 없음");
+
+      allRoutes.add(guideTexts);
     }
   } else {
-    guideTexts.add('도보 경로 실패: ${response.statusCode}');
+    print("🚫 API 실패: ${response.statusCode}");
   }
 
-  return guideTexts;
+  return allRoutes;
 }
 
-Future<List<String>> getTransitRoute(Map<String, double> start, Map<String, double> end) async {
-  final url =
-      'https://apis.openapi.sk.com/transit/routes?version=1&format=json'
-      '&startX=${start['lng']}&startY=${start['lat']}'
-      '&endX=${end['lng']}&endY=${end['lat']}';
+Future<void> main() async {
+  final start = {'lat': 37.5665, 'lng': 126.9780}; // 서울시청
+  final end = {'lat': 37.5010, 'lng': 127.0254};   // 강남역
 
-  final headers = {
-    'accept': 'application/json',
-    'Authorization': tmapApiKey,
-  };
+  print('\n📍 출발지: ${start['lat']}, ${start['lng']}');
+  print('📍 도착지: ${end['lat']}, ${end['lng']}\n');
 
-  final response = await http.get(Uri.parse(url), headers: headers);
-
-  // 📌 추가: 응답 로그 출력
-  print("📡 대중교통 응답 코드: ${response.statusCode}");
-  print("📦 대중교통 응답 본문:\n${response.body}");
-
-  List<String> guideTexts = [];
-
-  if (response.statusCode == 200) {
-    final data = json.decode(response.body);
-    final itinerary = data['metaData']['plan']['itineraries'][0];
-    final timeMin = (itinerary['totalTime'] / 60).round();
-    final fare = itinerary['totalFare']['regular']['totalFare'];
-
-    guideTexts.add("대중교통 예상 시간: ${timeMin}분 / 요금: ${fare}원");
-
-    for (final leg in itinerary['legs']) {
-      final sectionType = leg['mode'];
-      final sectionInfo = leg['route'] ?? leg['start']['name'];
-      final sectionTime = leg['sectionTime'];
-      guideTexts.add(" - [$sectionType] $sectionInfo (${sectionTime}분)");
-    }
-  } else {
-    guideTexts.add('대중교통 실패: ${response.statusCode}');
+  final routes = await getAllTransitRoutes(start, end);
+  int index = 1;
+  for (final route in routes) {
+    print('\n🚀 [경로 $index]');
+    route.forEach(print);
+    index++;
   }
-
-  return guideTexts;
 }
