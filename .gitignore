@@ -48,3 +48,4 @@ app.*.map.json
 # 환경변수 파일
 .env
 tmap_backend/serviceAccountKey.json
+tmap_backend/t111-5d2a9-firebase-adminsdk-fbsvc-1f254349b3.json
