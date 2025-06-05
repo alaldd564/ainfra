@@ -6,19 +6,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    
+
     <!-- ✅ 위치 권한 -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <!-- 실시간 위치 트래킹용 Foreground Service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-
-    <!-- 백그라운드 위치 권한 (Android 10 이상에서만 필요) -->
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-
-    <!-- ✅ Android 13 이상: 알림 권한 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
 
     <application
         android:label="maptest"
@@ -50,9 +44,15 @@
 
         <activity android:name=".MapActivity" />
 
+        <!-- ✅ TMAP 지도 API KEY -->
         <meta-data
             android:name="com.skt.tmap.maps.API_KEY"
             android:value="NsxOESGJ823yk2Nyvwcf15sSqaYMBXlw1L4UBmoa" />
+
+        <!-- ✅ 네이버 지도 CLIENT_ID 등록 -->
+        <meta-data
+            android:name="com.naver.maps.map.CLIENT_ID"
+            android:value="4aktoebb8w" /> <!-- 네이버 clientId -->
 
         <meta-data
             android:name="flutterEmbedding"

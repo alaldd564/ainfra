@@ -10,10 +10,13 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler {
-            call, result ->
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             if (call.method == "launchMapActivity") {
+                val lat = call.argument<Double>("latitude") ?: 37.5665
+                val lon = call.argument<Double>("longitude") ?: 126.9780
                 val intent = Intent(this, MapActivity::class.java)
+                intent.putExtra("latitude", lat)
+                intent.putExtra("longitude", lon)
                 startActivity(intent)
                 result.success("OK")
             } else {

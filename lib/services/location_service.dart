@@ -1,17 +1,16 @@
-// lib/services/location_service.dart
-
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 
 class LocationService {
-  Stream<Position>? _positionStream;
+  Timer? _timer;
 
-  /// 위치 권한 요청 + 초기 위치 전송 + 스트림 시작
+  /// 위치 권한 요청 + 30초마다 위치 전송
   Future<void> startTrackingAndSend({
     required String userId,
     LocationAccuracy accuracy = LocationAccuracy.best,
-    int distanceFilter = 10,
+    Duration interval = const Duration(seconds: 30),
     String serverUrl = "https://tmap-backend.onrender.com/update_location",
   }) async {
     LocationPermission permission = await Geolocator.checkPermission();
@@ -23,7 +22,7 @@ class LocationService {
 
     if (permission == LocationPermission.whileInUse ||
         permission == LocationPermission.always) {
-      // ✅ 실행하자마자 현재 위치 한 번 전송
+      // ✅ 시작 시 최초 한 번 위치 전송
       try {
         final currentPosition = await Geolocator.getCurrentPosition(
           desiredAccuracy: accuracy,
@@ -39,22 +38,22 @@ class LocationService {
         print("⚠️ 현재 위치 가져오기 실패: $e");
       }
 
-      // ✅ 이후 실시간 스트리밍
-      _positionStream = Geolocator.getPositionStream(
-        locationSettings: LocationSettings(
-          accuracy: accuracy,
-          distanceFilter: distanceFilter,
-        ),
-      );
-
-      _positionStream!.listen((Position position) async {
-        print('📡 실시간 위치: ${position.latitude}, ${position.longitude}');
-        await postLocationToServer(
-          userId: userId,
-          latitude: position.latitude,
-          longitude: position.longitude,
-          serverUrl: serverUrl,
-        );
+      // ✅ 이후 주기적으로 위치 전송
+      _timer = Timer.periodic(interval, (Timer timer) async {
+        try {
+          final position = await Geolocator.getCurrentPosition(
+            desiredAccuracy: accuracy,
+          );
+          print('🕒 ${DateTime.now()} - 위치 전송: ${position.latitude}, ${position.longitude}');
+          await postLocationToServer(
+            userId: userId,
+            latitude: position.latitude,
+            longitude: position.longitude,
+            serverUrl: serverUrl,
+          );
+        } catch (e) {
+          print("⚠️ 위치 가져오기 실패: $e");
+        }
       });
     } else {
       print("❌ 위치 권한 거부됨");
@@ -87,5 +86,11 @@ class LocationService {
     } catch (e) {
       print('🚨 서버 전송 실패: $e');
     }
+  }
+
+  /// 추적 중지
+  void stopTracking() {
+    _timer?.cancel();
+    print('🛑 위치 추적 중지됨');
   }
 }
