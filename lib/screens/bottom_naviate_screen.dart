@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
@@ -98,7 +99,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
 
         if (_currentLocation != null) {
           final walkingGuides = await getWalkingRoute(_currentLocation!, destination);
-          final transitGuides = await getTransitRoute(_currentLocation!, destination);
+          final transitGuides = await getRouteByOption(_currentLocation!, destination, RouteOptionType.shortestTime,);
 
           if (walkingGuides.isEmpty && transitGuides.isEmpty) {
             _showErrorDialog('경로를 불러오지 못했습니다.');
