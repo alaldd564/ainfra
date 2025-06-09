@@ -36,12 +36,11 @@ class _MapScreenState extends State<MapScreen> {
   LatLng? _currentLocation;
   LatLng? _destinationLocation;
   final TextEditingController _searchController = TextEditingController();
-  final List<NMarker> _markers = [];
 
   @override
   void initState() {
     super.initState();
-    _getCurrentLocation(); // 위젯 초기화 시 현재 위치 불러오기
+    _getCurrentLocation();
   }
 
   @override
@@ -51,12 +50,10 @@ class _MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 
-  // 현재 위치 불러오기
   Future<void> _getCurrentLocation() async {
     bool serviceEnabled;
     LocationPermission permission;
 
-    // 위치 서비스 활성화 여부 확인
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       if (mounted) {
@@ -67,7 +64,6 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
 
-    // 위치 권한 확인
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -90,7 +86,6 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
 
-    // 현재 위치 가져오기
     try {
       Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
@@ -98,7 +93,6 @@ class _MapScreenState extends State<MapScreen> {
         _currentLocation = LatLng(position.latitude, position.longitude);
       });
 
-      // 현재 위치로 지도 이동
       if (_mapController != null && _currentLocation != null) {
         _mapController!.updateCamera(
           NCameraUpdate.fromCameraPosition(
@@ -127,17 +121,14 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     try {
-      List<Location> locations = await geocoding.locationFromAddress(address);
+      List<Location> locations = await locationFromAddress(address);
 
       if (locations.isNotEmpty) {
         Location firstLocation = locations.first;
         setState(() {
-          _destinationLocation =
-              LatLng(firstLocation.latitude, firstLocation.longitude);
-          _addDestinationMarker();
+          _destinationLocation = LatLng(firstLocation.latitude, firstLocation.longitude);
         });
 
-        // 목적지로 지도 이동
         if (_mapController != null && _destinationLocation != null) {
           _mapController!.updateCamera(
             NCameraUpdate.fromCameraPosition(
@@ -159,28 +150,6 @@ class _MapScreenState extends State<MapScreen> {
           const SnackBar(content: Text('주소 검색에 실패했습니다.')),
         );
       }
-    }
-  }
-
-  // 목적지 마커
-  void _addDestinationMarker() {
-    if (_destinationLocation == null) return;
-
-    _markers.removeWhere((marker) => marker.info.id == 'destination');
-
-    // 새 목적지 마커 생성 및 추가
-    final destinationMarker = NMarker(
-        id: 'destination',
-        position: _destinationLocation!,
-        caption: const NOverlayCaption(text: '목적지'),\
-    );
-
-    setState(() {
-      _markers.add(destinationMarker);
-    });
-    \
-    if (_mapController != null) {
-    _mapController!.updateMarkers(markers: _markers);
     }
   }
 
@@ -216,11 +185,9 @@ class _MapScreenState extends State<MapScreen> {
               ],
             ),
           ),
-          // 지도 위젯
           Expanded(
             child: NaverMap(
               options: NaverMapViewOptions(
-                //기본 위치(서울 시청)
                 initialCameraPosition: NCameraPosition(
                   target: _currentLocation ?? const LatLng(37.5665, 126.9780),
                   zoom: 15,
@@ -239,7 +206,6 @@ class _MapScreenState extends State<MapScreen> {
                   );
                 }
               },
-              markers: _markers,
             ),
           ),
           if (_currentLocation != null)

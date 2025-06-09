@@ -5,7 +5,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../services/auth_service.dart';
-import '../services/location_service.dart'; // ✅ 위치 서비스 임포트
+import '../services/location_service.dart';
 import 'left_sos_screen.dart';
 import 'right_settings_screen.dart';
 import 'top_taxi_screen.dart';
@@ -23,11 +23,20 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
   static final AuthService _authService = AuthService();
   final FlutterTts _tts = FlutterTts();
 
+  double _speechRate = 0.5;
+  bool _ttsEnabled = true;
+
+  final List<Map<String, dynamic>> _menuItems = [
+    {'label': '설정', 'screen': const RightSettingsScreen()},
+    {'label': 'SOS 호출', 'screen': const LeftSosScreen()},
+    {'label': '길찾기', 'screen': const BottomNavigateScreen()},
+    {'label': '택시 호출', 'screen': const TopTaxiScreen()},
+    {'label': '지도 테스트', 'screen': const TmapLaunchScreen()},
+  ];
+
   @override
   void initState() {
     super.initState();
-
-    // ✅ 위치 전송 서비스 시작 (userId는 예시)
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       LocationService().startTrackingAndSend(userId: user.uid);
@@ -36,48 +45,12 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
     }
   }
 
-  Future<void> _handleSwipe(
-    BuildContext context,
-    DragEndDetails details,
-    Offset velocity,
-  ) async {
-    final vx = velocity.dx;
-    final vy = velocity.dy;
-
-    Widget nextScreen;
-    String screenName;
-
-    if (vx.abs() > vy.abs()) {
-      if (vx > 0) {
-        nextScreen = const RightSettingsScreen();
-        screenName = '설정 화면';
-      } else {
-        nextScreen = const LeftSosScreen();
-        screenName = 'SOS 호출 화면';
-      }
-    } else {
-      if (vy > 0) {
-        nextScreen = const BottomNavigateScreen();
-        screenName = '길찾기 화면';
-      } else {
-        nextScreen = const TopTaxiScreen();
-        screenName = '택시 호출 화면';
-      }
-    }
-
+  Future<void> _speak(String text) async {
+    if (!_ttsEnabled) return;
     await _tts.setLanguage("ko-KR");
-    await _tts.setSpeechRate(0.5);
+    await _tts.setSpeechRate(_speechRate);
     await _tts.awaitSpeakCompletion(true);
-    await _tts.speak('$screenName으로 이동합니다');
-
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    if (context.mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => nextScreen),
-      );
-    }
+    await _tts.speak(text);
   }
 
   void _handleMenu(BuildContext context, String value) async {
@@ -88,14 +61,13 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
           Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
         }
         break;
-
       case 'help':
         if (!context.mounted) return;
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('도움말'),
-            content: const Text('화면을 상하좌우로 스와이프하면 기능을 이동할 수 있습니다.'),
+            content: const Text('기능 목록을 선택하면 TTS 안내 후 이동합니다.'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -105,7 +77,6 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
           ),
         );
         break;
-
       case 'generate_id':
         final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
         final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -142,9 +113,6 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
-
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -177,45 +145,66 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
               style: TextStyle(color: Color(0xFFFFE51F), fontSize: 20),
             ),
           ),
-          const SizedBox(height: 10),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const TmapLaunchScreen()),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.deepPurple,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: Icon(
+                  _ttsEnabled ? Icons.volume_up : Icons.volume_off,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _ttsEnabled = !_ttsEnabled;
+                  });
+                },
               ),
-            ),
-            child: const Text('지도 테스트 화면 이동'),
+              Slider(
+                value: _speechRate,
+                onChanged: (value) {
+                  setState(() {
+                    _speechRate = value;
+                  });
+                },
+                min: 0.1,
+                max: 1.0,
+                divisions: 9,
+                label: "속도: ${_speechRate.toStringAsFixed(1)}",
+              ),
+            ],
           ),
-          const Spacer(),
-          Center(
-            child: GestureDetector(
-              onPanEnd: (details) {
-                _handleSwipe(
-                  context,
-                  details,
-                  details.velocity.pixelsPerSecond,
+          Expanded(
+            child: ListView.builder(
+              itemCount: _menuItems.length,
+              itemBuilder: (context, index) {
+                final item = _menuItems[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  color: Colors.yellow[100],
+                  child: InkWell(
+                    onTap: () async {
+                      await _speak('${item['label']} 화면으로 이동합니다');
+                      await Future.delayed(const Duration(milliseconds: 500));
+                      if (!context.mounted) return;
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => item['screen']),
+                      );
+                    },
+                    child: Container(
+                      height: 80,
+                      alignment: Alignment.center,
+                      child: Text(
+                        item['label'],
+                        style: const TextStyle(fontSize: 30),
+                      ),
+                    ),
+                  ),
                 );
               },
-              child: Container(
-                width: screenWidth * 0.8,
-                height: screenHeight * 2 / 3,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFE51F),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
             ),
           ),
-          const Spacer(),
         ],
       ),
     );

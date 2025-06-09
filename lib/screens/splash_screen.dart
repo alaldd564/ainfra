@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../services/auth_service.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -15,15 +17,16 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _checkLoginStatus();
+    _checkAutoLogin();
   }
 
-  Future<void> _checkLoginStatus() async {
+  Future<void> _checkAutoLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    final autoLogin = prefs.getBool('autoLogin') ?? false;
     final user = FirebaseAuth.instance.currentUser;
 
-    if (user != null) {
+    if (autoLogin && user != null) {
       final role = await _authService.getUserRole(user.uid);
-
       if (!mounted) return;
 
       if (role == '시각장애인') {

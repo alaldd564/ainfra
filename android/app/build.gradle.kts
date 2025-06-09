@@ -53,8 +53,8 @@ dependencies {
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
-    implementation("io.flutter:flutter_embedding_debug:1.0.0-")
     implementation(files("libs/vsm-tmap-sdk-v2-android-1.7.23.aar"))
     implementation(files("libs/tmap-sdk-2.0.aar"))
+    
 
 }

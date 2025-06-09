@@ -22,8 +22,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   final AuthService _authService = AuthService();
   Timer? _locationUpdateTimer;
 
-  NMarker? _blindMarker;  // 마커 객체
-
   @override
   void initState() {
     super.initState();
@@ -55,9 +53,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         final controller = await _controller.future;
         _mapController = controller;
         await controller.updateCamera(NCameraUpdate.withParams(target: latLng, zoom: 16));
-
-        // 최초 위치 마커도 설정
-        await _updateBlindMarker(latLng);
       } catch (e) {
         _showErrorSnackBar('위치 정보를 가져오지 못했습니다.');
       }
@@ -88,28 +83,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
       if (_mapController != null) {
         await _mapController!.updateCamera(NCameraUpdate.withParams(target: newLocation, zoom: 16));
-        await _updateBlindMarker(newLocation);
       }
     });
-  }
-
-  Future<void> _updateBlindMarker(NLatLng position) async {
-    if (_mapController == null) return;
-
-    // 기존 마커 삭제
-    if (_blindMarker != null) {
-      await _mapController!.deleteOverlay(_blindMarker!);
-    }
-
-    // 새로운 마커 생성
-    _blindMarker = NMarker(
-      id: 'blind_marker',
-      position: position,
-      caption: NOverlayCaption(text: "시각장애인 위치", textSize: 14),
-      // icon: ... // 필요하면 아이콘 커스터마이징 가능
-    );
-
-    await _mapController!.addOverlay(_blindMarker!);
   }
 
   void _showErrorSnackBar(String message) {
@@ -130,7 +105,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
   void _initFCM() {
     FirebaseMessaging.instance.requestPermission();
-    FirebaseMessaging.instance.onMessage.listen((RemoteMessage message) {
+    
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       final title = message.notification?.title ?? '알림';
       final body = message.notification?.body ?? '내용 없음';
       if (!mounted) return;
