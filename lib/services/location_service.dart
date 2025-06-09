@@ -1,16 +1,17 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'dart:async';
 
 class LocationService {
   Timer? _timer;
 
-  /// 위치 권한 요청 + 30초마다 위치 전송
+  /// 위치 권한 요청 + 주기적으로 위치 전송
   Future<void> startTrackingAndSend({
     required String userId,
     LocationAccuracy accuracy = LocationAccuracy.best,
-    Duration interval = const Duration(seconds: 30),
+    Duration interval = const Duration(seconds: 10),
     String serverUrl = "https://tmap-backend.onrender.com/update_location",
   }) async {
     LocationPermission permission = await Geolocator.checkPermission();
@@ -22,7 +23,7 @@ class LocationService {
 
     if (permission == LocationPermission.whileInUse ||
         permission == LocationPermission.always) {
-      // ✅ 시작 시 최초 한 번 위치 전송
+      // ✅ 시작 시 최초 위치 전송
       try {
         final currentPosition = await Geolocator.getCurrentPosition(
           desiredAccuracy: accuracy,
@@ -33,6 +34,11 @@ class LocationService {
           latitude: currentPosition.latitude,
           longitude: currentPosition.longitude,
           serverUrl: serverUrl,
+        );
+        await updateFirestoreLocation(
+          userId: userId,
+          latitude: currentPosition.latitude,
+          longitude: currentPosition.longitude,
         );
       } catch (e) {
         print("⚠️ 현재 위치 가져오기 실패: $e");
@@ -51,6 +57,11 @@ class LocationService {
             longitude: position.longitude,
             serverUrl: serverUrl,
           );
+          await updateFirestoreLocation(
+            userId: userId,
+            latitude: position.latitude,
+            longitude: position.longitude,
+          );
         } catch (e) {
           print("⚠️ 위치 가져오기 실패: $e");
         }
@@ -60,7 +71,7 @@ class LocationService {
     }
   }
 
-  /// 서버로 위치 POST 요청 보내기
+  /// 외부 서버에 위치 POST 요청 보내기
   Future<void> postLocationToServer({
     required String userId,
     required double latitude,
@@ -85,6 +96,26 @@ class LocationService {
       }
     } catch (e) {
       print('🚨 서버 전송 실패: $e');
+    }
+  }
+
+  /// Firebase Firestore에 위치 저장 (마커 표시용)
+  Future<void> updateFirestoreLocation({
+    required String userId,
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      await FirebaseFirestore.instance.collection('locations').doc(userId).set({
+        'lat': latitude,
+        'lng': longitude,
+        'timestamp': Timestamp.now(),
+        'location_shared': true,
+      }, SetOptions(merge: true));
+
+      print('✅ Firebase에 위치 저장 완료');
+    } catch (e) {
+      print('❌ Firebase 저장 실패: $e');
     }
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:geolocator/geolocator.dart'; // ✅ 위치 정보 가져오기 위해 추가
 
 class LocationShareScreen extends StatefulWidget {
   const LocationShareScreen({super.key});
@@ -27,23 +28,21 @@ class _LocationShareScreenState extends State<LocationShareScreen> {
     if (uid == null) return;
 
     // blind_users 문서에서 generatedId 찾기
-    final snapshot =
-        await FirebaseFirestore.instance
-            .collection('blind_users')
-            .where('uid', isEqualTo: uid)
-            .limit(1)
-            .get();
+    final snapshot = await FirebaseFirestore.instance
+        .collection('blind_users')
+        .where('uid', isEqualTo: uid)
+        .limit(1)
+        .get();
 
     if (snapshot.docs.isEmpty) return;
 
     final docId = snapshot.docs.first.id;
     _generatedId = docId;
 
-    final locDoc =
-        await FirebaseFirestore.instance
-            .collection('locations')
-            .doc(docId)
-            .get();
+    final locDoc = await FirebaseFirestore.instance
+        .collection('locations')
+        .doc(docId)
+        .get();
 
     setState(() {
       _locationShared = locDoc.data()?['location_shared'] ?? false;
@@ -56,13 +55,28 @@ class _LocationShareScreenState extends State<LocationShareScreen> {
 
     final newValue = !_locationShared;
 
+    Map<String, dynamic> updateData = {
+      'location_shared': newValue,
+      'last_updated': FieldValue.serverTimestamp(),
+    };
+
+    // ✅ 위치 공유를 켜는 경우 현재 위치도 저장
+    if (newValue) {
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        );
+        updateData['lat'] = position.latitude;
+        updateData['lng'] = position.longitude;
+      } catch (e) {
+        print('❌ 위치 정보 가져오기 실패: $e');
+      }
+    }
+
     await FirebaseFirestore.instance
         .collection('locations')
         .doc(_generatedId!)
-        .set({
-          'location_shared': newValue,
-          'last_updated': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+        .set(updateData, SetOptions(merge: true));
 
     setState(() => _locationShared = newValue);
 
@@ -107,10 +121,7 @@ class _LocationShareScreenState extends State<LocationShareScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.deepPurple,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 30,
-                  vertical: 15,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
               ),
               child: Text(
                 _locationShared ? '위치 공유 끄기' : '위치 공유 켜기',
