@@ -20,7 +20,6 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   final Completer<NaverMapController> _mapController = Completer();
 
   String recognizedText = '';
-  bool showMap = false;
   NLatLng? _currentLocation;
 
   late stt.SpeechToText _speech;
@@ -31,6 +30,10 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   bool isModeSelected = false;
   bool isTextMode = false;
   final TextEditingController _textController = TextEditingController();
+
+  List<List<String>>? guideRoutes;
+  List<bool> routeExpanded = [];
+  int selectedRouteIndex = -1;
 
   @override
   void initState() {
@@ -88,37 +91,73 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     );
   }
 
-  void _handleDoubleTap() async {
+  Future<void> _handleDoubleTap() async {
     if (_navigating || !_isReadyForDoubleTap || _isTtsSpeaking || recognizedText.isEmpty) return;
     _navigating = true;
     await _speak('$recognizedText로 경로를 안내합니다.');
-    setState(() => showMap = true);
 
     try {
       final locations = await locationFromAddress(recognizedText);
-      if (locations.isNotEmpty) {
-        final dest = locations.first;
-        final destination = NLatLng(dest.latitude, dest.longitude);
-
-        if (_currentLocation != null) {
-          final walkingGuides = await getWalkingRoute(_currentLocation!, destination);
-          final transitGuides = await getRouteByOption(_currentLocation!, destination, RouteOptionType.shortestTime);
-
-          if (walkingGuides.isEmpty && transitGuides.isEmpty) {
-            _showErrorDialog('경로를 불러오지 못했습니다.');
-          } else {
-            _showUnifiedRoutePopup(
-              walkingGuides: walkingGuides,
-              transitGuides: transitGuides,
-            );
-          }
-        }
-      } else {
+      if (locations.isEmpty) {
         _speak("목적지 위치를 찾을 수 없습니다.");
+        return;
+      }
+
+      if (locations.length == 1) {
+        _startRoutingTo(locations.first);
+      } else {
+        _showLocationSelection(locations);
       }
     } catch (e) {
       print("위치 변환 오류: $e");
       _speak("목적지 변환 중 오류가 발생했습니다.");
+    }
+  }
+
+  void _showLocationSelection(List<Location> locations) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      builder: (_) => ListView.builder(
+        itemCount: locations.length,
+        itemBuilder: (context, index) {
+          final loc = locations[index];
+          final locText = '위도: ${loc.latitude}, 경도: ${loc.longitude}';
+          return Semantics(
+            label: '지점 ${index + 1}, ${locText}',
+            child: ListTile(
+              title: Text('지점 ${index + 1}'),
+              subtitle: Text(locText),
+              onTap: () {
+                Navigator.pop(context);
+                _startRoutingTo(loc);
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _startRoutingTo(Location dest) async {
+    final destination = NLatLng(dest.latitude, dest.longitude);
+    if (_currentLocation != null) {
+      final routes = await getAllTransitRoutes(
+        {
+          'lat': _currentLocation!.latitude,
+          'lng': _currentLocation!.longitude,
+        },
+        {
+          'lat': destination.latitude,
+          'lng': destination.longitude,
+        },
+      );
+
+      setState(() {
+        guideRoutes = routes;
+        selectedRouteIndex = -1;
+        routeExpanded = List.generate(routes.length, (_) => false);
+      });
     }
   }
 
@@ -138,53 +177,6 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     }
   }
 
-  void _showUnifiedRoutePopup({
-    required List<String> walkingGuides,
-    required List<String> transitGuides,
-  }) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('전체 경로 안내'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              const Text('🚶 도보 경로', style: TextStyle(fontWeight: FontWeight.bold)),
-              ...walkingGuides.map((text) => Text('• $text')),
-              const SizedBox(height: 16),
-              const Text('🚌 대중교통 경로', style: TextStyle(fontWeight: FontWeight.bold)),
-              ...transitGuides.map((text) => Text('• $text')),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('닫기'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('오류'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('확인'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -193,49 +185,105 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
         title: const Text('경로 설정'),
         backgroundColor: Colors.deepPurple,
       ),
-      body: !isModeSelected
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        isModeSelected = true;
-                        isTextMode = false;
-                        _speakThen(() => _initializeSpeech(), '목적지를 말씀해주세요.');
-                      });
-                    },
-                    icon: const Icon(Icons.mic),
-                    label: const Text('음성으로 목적지 입력하기'),
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        isModeSelected = true;
-                        isTextMode = true;
-                      });
-                    },
-                    icon: const Icon(Icons.edit),
-                    label: const Text('텍스트로 목적지 입력하기'),
-                  ),
-                ],
-              ),
-            )
-          : showMap
-              ? (_currentLocation == null
-                  ? const Center(child: CircularProgressIndicator())
-                  : NaverMap(
-                      onMapReady: (controller) => _mapController.complete(controller),
-                      options: NaverMapViewOptions(
-                        initialCameraPosition: NCameraPosition(
-                          target: _currentLocation!,
-                          zoom: 16,
+      body: guideRoutes != null
+          ? ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: guideRoutes!.length,
+              itemBuilder: (context, index) {
+                final route = guideRoutes![index];
+                final summary = route.isNotEmpty ? route.first : '경로 요약 없음';
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFFD400),
+                          padding: const EdgeInsets.all(16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        locationButtonEnable: true,
+                        onPressed: () {
+                          setState(() => routeExpanded[index] = !routeExpanded[index]);
+                        },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('경로 ${index + 1}', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                            Flexible(
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 12),
+                                child: Text(
+                                  summary,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(color: Colors.black),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ))
+                      if (routeExpanded[index])
+                        Column(
+                          children: [
+                            ...route.skip(1).map((line) => Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 12),
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(line, style: const TextStyle(color: Colors.white)),
+                                  ),
+                                )),
+                            const SizedBox(height: 10),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.deepPurple,
+                              ),
+                              onPressed: () async {
+                                await _speak('실시간 경로 안내를 시작합니다.');
+                                for (final line in route) {
+                                  await _speak(line);
+                                }
+                              },
+                              child: const Text('🚀 실시간 경로 안내'),
+                            )
+                          ],
+                        )
+                    ],
+                  ),
+                );
+              },
+            )
+          : !isModeSelected
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            isModeSelected = true;
+                            isTextMode = false;
+                            _speakThen(() => _initializeSpeech(), '목적지를 말씀해주세요.');
+                          });
+                        },
+                        icon: const Icon(Icons.mic),
+                        label: const Text('음성으로 목적지 입력하기'),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            isModeSelected = true;
+                            isTextMode = true;
+                          });
+                        },
+                        icon: const Icon(Icons.edit),
+                        label: const Text('텍스트로 목적지 입력하기'),
+                      ),
+                    ],
+                  ),
+                )
               : isTextMode
                   ? Center(
                       child: Padding(
