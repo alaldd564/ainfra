@@ -28,12 +28,15 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   bool _isReadyForDoubleTap = false;
   bool _navigating = false;
 
+  bool isModeSelected = false;
+  bool isTextMode = false;
+  final TextEditingController _textController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     _initializeTTS();
     _speech = stt.SpeechToText();
-    _speakThen(() => _initializeSpeech(), '목적지를 말씀해주세요.');
     _getCurrentLocation();
   }
 
@@ -99,7 +102,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
 
         if (_currentLocation != null) {
           final walkingGuides = await getWalkingRoute(_currentLocation!, destination);
-          final transitGuides = await getRouteByOption(_currentLocation!, destination, RouteOptionType.shortestTime,);
+          final transitGuides = await getRouteByOption(_currentLocation!, destination, RouteOptionType.shortestTime);
 
           if (walkingGuides.isEmpty && transitGuides.isEmpty) {
             _showErrorDialog('경로를 불러오지 못했습니다.');
@@ -190,41 +193,107 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
         title: const Text('경로 설정'),
         backgroundColor: Colors.deepPurple,
       ),
-      body: showMap
-          ? (_currentLocation == null
-              ? const Center(child: CircularProgressIndicator())
-              : NaverMap(
-                  onMapReady: (controller) => _mapController.complete(controller),
-                  options: NaverMapViewOptions(
-                    initialCameraPosition: NCameraPosition(
-                      target: _currentLocation!,
-                      zoom: 16,
-                    ),
-                    locationButtonEnable: true,
+      body: !isModeSelected
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        isModeSelected = true;
+                        isTextMode = false;
+                        _speakThen(() => _initializeSpeech(), '목적지를 말씀해주세요.');
+                      });
+                    },
+                    icon: const Icon(Icons.mic),
+                    label: const Text('음성으로 목적지 입력하기'),
                   ),
-                ))
-          : Center(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onDoubleTap: _handleDoubleTap,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      recognizedText.isEmpty ? '말씀해주세요...' : '입력된 목적지: $recognizedText',
-                      style: const TextStyle(color: Colors.white, fontSize: 20),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-                    if (_isReadyForDoubleTap && !_isTtsSpeaking && recognizedText.isNotEmpty)
-                      ElevatedButton(
-                        onPressed: _handleDoubleTap,
-                        child: const Text('경로 안내 시작'),
-                      ),
-                  ],
-                ),
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        isModeSelected = true;
+                        isTextMode = true;
+                      });
+                    },
+                    icon: const Icon(Icons.edit),
+                    label: const Text('텍스트로 목적지 입력하기'),
+                  ),
+                ],
               ),
-            ),
+            )
+          : showMap
+              ? (_currentLocation == null
+                  ? const Center(child: CircularProgressIndicator())
+                  : NaverMap(
+                      onMapReady: (controller) => _mapController.complete(controller),
+                      options: NaverMapViewOptions(
+                        initialCameraPosition: NCameraPosition(
+                          target: _currentLocation!,
+                          zoom: 16,
+                        ),
+                        locationButtonEnable: true,
+                      ),
+                    ))
+              : isTextMode
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            TextField(
+                              controller: _textController,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: const InputDecoration(
+                                hintText: '목적지를 입력하세요',
+                                hintStyle: TextStyle(color: Colors.white54),
+                                enabledBorder: UnderlineInputBorder(
+                                  borderSide: BorderSide(color: Colors.white54),
+                                ),
+                                focusedBorder: UnderlineInputBorder(
+                                  borderSide: BorderSide(color: Colors.white),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  recognizedText = _textController.text;
+                                  _isReadyForDoubleTap = true;
+                                });
+                                _handleDoubleTap();
+                              },
+                              child: const Text('경로 안내 시작'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : Center(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onDoubleTap: _handleDoubleTap,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              recognizedText.isEmpty ? '말씀해주세요...' : '입력된 목적지: $recognizedText',
+                              style: const TextStyle(color: Colors.white, fontSize: 20),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 20),
+                            if (_isReadyForDoubleTap && !_isTtsSpeaking && recognizedText.isNotEmpty)
+                              ElevatedButton(
+                                onPressed: _handleDoubleTap,
+                                child: const Text('경로 안내 시작'),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
     );
   }
 }

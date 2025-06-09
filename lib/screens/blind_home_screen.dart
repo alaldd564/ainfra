@@ -6,7 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../services/auth_service.dart';
 import '../services/location_service.dart';
-import 'left_sos_screen.dart';
+import 'location_share_screen.dart';
 import 'right_settings_screen.dart';
 import 'top_taxi_screen.dart';
 import 'bottom_naviate_screen.dart';
@@ -28,7 +28,7 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
 
   final List<Map<String, dynamic>> _menuItems = [
     {'label': '설정', 'screen': const RightSettingsScreen()},
-    {'label': 'SOS 호출', 'screen': const LeftSosScreen()},
+    {'label': '위치 공유하기', 'screen': const LocationShareScreen()},
     {'label': '길찾기', 'screen': const BottomNavigateScreen()},
     {'label': '택시 호출', 'screen': const TopTaxiScreen()},
     {'label': '지도 테스트', 'screen': const TmapLaunchScreen()},

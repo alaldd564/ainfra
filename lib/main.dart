@@ -10,10 +10,17 @@ import 'screens/right_settings_screen.dart';
 import 'screens/splash_screen.dart'; // ✅ 추가
 import 'package:provider/provider.dart';
 import 'package:maptest/screens/brightness_settings.dart';
+import 'package:flutter_naver_map/flutter_naver_map.dart'; // ✅ 네이버 지도 import 추가
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // ✅ 네이버 지도 초기화
+  await FlutterNaverMap().init(
+    clientId: 'iytq4xot6d', // ← 네이버 클라이언트 ID로 교체
+    onAuthFailed: (e) => debugPrint("네이버 지도 인증 실패: $e"),
+  );
 
   runApp(
     ChangeNotifierProvider(

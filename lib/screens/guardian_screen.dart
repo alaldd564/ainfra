@@ -5,7 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';  // 추가
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../services/auth_service.dart';
 
 class GuardianHomeScreen extends StatefulWidget {
@@ -17,8 +17,9 @@ class GuardianHomeScreen extends StatefulWidget {
 
 class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   final Completer<NaverMapController> _controller = Completer();
-  NLatLng? _currentLocation;
   NaverMapController? _mapController;
+  NLatLng? _currentLocation;
+  NMarker? _blindUserMarker;
   final AuthService _authService = AuthService();
   Timer? _locationUpdateTimer;
 
@@ -73,17 +74,35 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
       final locationDoc = await FirebaseFirestore.instance.collection('locations').doc(linkedUid).get();
       final data = locationDoc.data();
-      if (data == null) return;
+      if (data == null || !(data['location_shared'] ?? false)) return;
 
-      final lat = data['latitude'];
-      final lng = data['longitude'];
+      final lat = data['lat'];
+      final lng = data['lng'];
+      final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
       final newLocation = NLatLng(lat, lng);
 
-      setState(() => _currentLocation = newLocation);
+      final newMarker = NMarker(
+        id: 'blind_marker',
+        position: newLocation,
+        caption: NOverlayCaption(
+          text: timestamp != null ?
+            '시각장애인 위치 (${timestamp.hour}시 ${timestamp.minute}분)' : '시각장애인 위치',
+        ),
+      );
 
-      if (_mapController != null) {
-        await _mapController!.updateCamera(NCameraUpdate.withParams(target: newLocation, zoom: 16));
+      final controller = _mapController;
+      if (controller != null) {
+        if (_blindUserMarker != null) {
+          await controller.deleteOverlay(_blindUserMarker!.info);
+        }
+        await controller.addOverlay(newMarker);
+        await controller.updateCamera(NCameraUpdate.withParams(target: newLocation, zoom: 16));
       }
+
+      setState(() {
+        _currentLocation = newLocation;
+        _blindUserMarker = newMarker;
+      });
     });
   }
 
@@ -105,7 +124,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
   void _initFCM() {
     FirebaseMessaging.instance.requestPermission();
-    
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       final title = message.notification?.title ?? '알림';
       final body = message.notification?.body ?? '내용 없음';
@@ -115,9 +133,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         builder: (_) => AlertDialog(
           title: Text(title),
           content: Text(body),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('확인')),
-          ],
+          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('확인'))],
         ),
       );
     });
@@ -156,7 +172,59 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       await _authService.signOut();
       if (mounted) Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
     } else if (value == 'connect') {
-      // 고유번호 입력 팝업 등 추가 구현 가능
+      showDialog(
+        context: context,
+        builder: (_) {
+          final TextEditingController idController = TextEditingController();
+          return AlertDialog(
+            title: const Text('시각장애인 고유번호 입력'),
+            content: TextField(
+              controller: idController,
+              decoration: const InputDecoration(hintText: '고유번호를 입력하세요'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  final code = idController.text.trim();
+                  if (code.isEmpty) return;
+
+                  try {
+                    final blindDoc = await FirebaseFirestore.instance.collection('blind_users').doc(code).get();
+                    if (!blindDoc.exists) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('고유번호가 올바르지 않습니다.')),
+                      );
+                      return;
+                    }
+
+                    final blindData = blindDoc.data()!;
+                    final guardianUid = FirebaseAuth.instance.currentUser?.uid;
+                    if (guardianUid == null) throw '로그인된 보호자 없음';
+
+                    await FirebaseFirestore.instance.collection('guardians').doc(guardianUid).set({
+                      'linked_user_code': code,
+                      'linked_user_uid': blindData['uid'],
+                    }, SetOptions(merge: true));
+
+                    await FirebaseFirestore.instance.collection('blind_users').doc(code).update({
+                      'user_key': guardianUid,
+                    });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('고유번호가 등록되었습니다.')),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('연결 실패: $e')),
+                    );
+                  }
+                },
+                child: const Text('등록'),
+              ),
+            ],
+          );
+        },
+      );
     }
   }
 
