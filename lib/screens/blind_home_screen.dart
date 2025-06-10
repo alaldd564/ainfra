@@ -23,14 +23,11 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
   static final AuthService _authService = AuthService();
   final FlutterTts _tts = FlutterTts();
 
-  double _speechRate = 0.5;
-  bool _ttsEnabled = true;
-
   final List<Map<String, dynamic>> _menuItems = [
-    {'label': '설정', 'screen': const RightSettingsScreen()},
     {'label': '위치 공유하기', 'screen': const LocationShareScreen()},
     {'label': '길찾기', 'screen': const BottomNavigateScreen()},
     {'label': '택시 호출', 'screen': const TopTaxiScreen()},
+    {'label': '설정', 'screen': const RightSettingsScreen()},
     {'label': '지도 테스트', 'screen': const TmapLaunchScreen()},
   ];
 
@@ -46,9 +43,8 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
   }
 
   Future<void> _speak(String text) async {
-    if (!_ttsEnabled) return;
     await _tts.setLanguage("ko-KR");
-    await _tts.setSpeechRate(_speechRate);
+    await _tts.setSpeechRate(0.5);
     await _tts.awaitSpeakCompletion(true);
     await _tts.speak(text);
   }
@@ -61,6 +57,7 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
           Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
         }
         break;
+
       case 'help':
         if (!context.mounted) return;
         showDialog(
@@ -77,28 +74,27 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
           ),
         );
         break;
+
       case 'generate_id':
         final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-        final generatedId = '${uid}_$timestamp';
 
         await FirebaseFirestore.instance
             .collection('blind_users')
-            .doc(generatedId)
+            .doc(uid)
             .set({
           'uid': uid,
           'user_key': '',
           'created_at': FieldValue.serverTimestamp(),
-        });
+        }, SetOptions(merge: true));
 
-        await Clipboard.setData(ClipboardData(text: generatedId));
+        await Clipboard.setData(ClipboardData(text: uid));
 
         if (!context.mounted) return;
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('고유번호 생성됨'),
-            content: Text('고유번호: $generatedId\n(자동 복사되었습니다)'),
+            title: const Text('UID 복사됨'),
+            content: Text('UID: $uid\n(자동 복사되었습니다)'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -130,7 +126,7 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
             itemBuilder: (context) => const [
               PopupMenuItem(value: 'logout', child: Text('로그아웃')),
               PopupMenuItem(value: 'help', child: Text('도움말')),
-              PopupMenuItem(value: 'generate_id', child: Text('고유번호 생성')),
+              PopupMenuItem(value: 'generate_id', child: Text('UID 복사')),
             ],
           ),
         ],
@@ -146,41 +142,14 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: Icon(
-                  _ttsEnabled ? Icons.volume_up : Icons.volume_off,
-                  color: Colors.white,
-                ),
-                onPressed: () {
-                  setState(() {
-                    _ttsEnabled = !_ttsEnabled;
-                  });
-                },
-              ),
-              Slider(
-                value: _speechRate,
-                onChanged: (value) {
-                  setState(() {
-                    _speechRate = value;
-                  });
-                },
-                min: 0.1,
-                max: 1.0,
-                divisions: 9,
-                label: "속도: ${_speechRate.toStringAsFixed(1)}",
-              ),
-            ],
-          ),
           Expanded(
             child: ListView.builder(
               itemCount: _menuItems.length,
               itemBuilder: (context, index) {
                 final item = _menuItems[index];
                 return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   color: Colors.yellow[100],
                   child: InkWell(
                     onTap: () async {

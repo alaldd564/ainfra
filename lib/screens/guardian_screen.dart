@@ -85,8 +85,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         id: 'blind_marker',
         position: newLocation,
         caption: NOverlayCaption(
-          text: timestamp != null ?
-            '시각장애인 위치 (${timestamp.hour}시 ${timestamp.minute}분)' : '시각장애인 위치',
+          text: timestamp != null
+              ? '시각장애인 위치 (${timestamp.hour}시 ${timestamp.minute}분)'
+              : '시각장애인 위치',
         ),
       );
 
@@ -177,41 +178,39 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         builder: (_) {
           final TextEditingController idController = TextEditingController();
           return AlertDialog(
-            title: const Text('시각장애인 고유번호 입력'),
+            title: const Text('시각장애인 UID 입력'),
             content: TextField(
               controller: idController,
-              decoration: const InputDecoration(hintText: '고유번호를 입력하세요'),
+              decoration: const InputDecoration(hintText: '시각장애인 UID를 입력하세요'),
             ),
             actions: [
               TextButton(
                 onPressed: () async {
-                  final code = idController.text.trim();
-                  if (code.isEmpty) return;
+                  final blindUid = idController.text.trim();
+                  if (blindUid.isEmpty) return;
 
                   try {
-                    final blindDoc = await FirebaseFirestore.instance.collection('blind_users').doc(code).get();
+                    final blindDoc = await FirebaseFirestore.instance.collection('blind_users').doc(blindUid).get();
                     if (!blindDoc.exists) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('고유번호가 올바르지 않습니다.')),
+                        const SnackBar(content: Text('UID가 올바르지 않습니다.')),
                       );
                       return;
                     }
 
-                    final blindData = blindDoc.data()!;
                     final guardianUid = FirebaseAuth.instance.currentUser?.uid;
                     if (guardianUid == null) throw '로그인된 보호자 없음';
 
                     await FirebaseFirestore.instance.collection('guardians').doc(guardianUid).set({
-                      'linked_user_code': code,
-                      'linked_user_uid': blindData['uid'],
+                      'linked_user_uid': blindUid,
                     }, SetOptions(merge: true));
 
-                    await FirebaseFirestore.instance.collection('blind_users').doc(code).update({
+                    await FirebaseFirestore.instance.collection('blind_users').doc(blindUid).update({
                       'user_key': guardianUid,
                     });
 
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('고유번호가 등록되었습니다.')),
+                      const SnackBar(content: Text('연결이 완료되었습니다.')),
                     );
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -241,7 +240,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             onSelected: _handleMenu,
             itemBuilder: (context) => const [
               PopupMenuItem(value: 'logout', child: Text('로그아웃')),
-              PopupMenuItem(value: 'connect', child: Text('고유번호 입력')),
+              PopupMenuItem(value: 'connect', child: Text('UID 입력')),
             ],
           ),
         ],

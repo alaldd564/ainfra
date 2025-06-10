@@ -1,56 +1,66 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:maptest/screens/brightness_settings.dart';
 
+class RightSettingsScreen extends StatefulWidget {
+  const RightSettingsScreen({Key? key}) : super(key: key);
 
-class RightSettingsScreen extends StatelessWidget {
-  const RightSettingsScreen({super.key});
+  @override
+  State<RightSettingsScreen> createState() => _RightSettingsScreenState();
+}
+
+class _RightSettingsScreenState extends State<RightSettingsScreen> {
+  bool _ttsEnabled = true;
+  double _speechRate = 0.5;
 
   @override
   Widget build(BuildContext context) {
-    final settings = Provider.of<BrightnessSettings>(context);
-
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(title: const Text('전체 화면 설정')),
-      body: Row(
-        children: [
-          _buildSlider('밝기', settings.brightness, Colors.yellow, settings.updateBrightness),
-          _buildSlider('채도', settings.saturation, Colors.pink, settings.updateSaturation),
-          _buildSlider('명도', settings.lightness, Colors.cyan, settings.updateLightness),
-          Expanded(
-            child: Center(
-              child: Text(
-                '전체 화면 색조정',
-                style: const TextStyle(color: Colors.white, fontSize: 20),
-              ),
-            ),
-          ),
-        ],
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        title: const Text(
+          '설정',
+          style: TextStyle(color: Color(0xFFFFD400)),
+        ),
+        iconTheme: const IconThemeData(color: Color(0xFFFFD400)),
       ),
-    );
-  }
-
-  Widget _buildSlider(String label, double value, Color color, void Function(double) onChanged) {
-    return Container(
-      width: 60,
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Column(
-        children: [
-          Text(label, style: const TextStyle(color: Colors.white)),
-          Expanded(
-            child: RotatedBox(
-              quarterTurns: -1,
-              child: Slider(
-                value: value,
-                min: 0,
-                max: 1,
-                activeColor: color,
-                onChanged: onChanged,
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            SwitchListTile(
+              title: const Text(
+                '음성 on/off',
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+              value: _ttsEnabled,
+              activeColor: const Color(0xFFFFD400),
+              onChanged: (value) {
+                setState(() {
+                  _ttsEnabled = value;
+                });
+              },
+            ),
+            ListTile(
+              title: const Text(
+                '음성 속도',
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+              subtitle: Slider(
+                value: _speechRate,
+                min: 0.1,
+                max: 1.0,
+                divisions: 9,
+                label: _speechRate.toStringAsFixed(1),
+                activeColor: const Color(0xFFFFD400),
+                onChanged: (value) {
+                  setState(() {
+                    _speechRate = value;
+                  });
+                },
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

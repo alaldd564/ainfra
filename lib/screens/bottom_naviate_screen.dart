@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:geocoding/geocoding.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:maptest/services/route_service.dart';
 
 class BottomNavigateScreen extends StatefulWidget {
@@ -142,6 +143,12 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   void _startRoutingTo(Location dest) async {
     final destination = NLatLng(dest.latitude, dest.longitude);
     if (_currentLocation != null) {
+      final String? uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        _speak("사용자 정보를 확인할 수 없습니다.");
+        return;
+      }
+
       final routes = await generateAllHybridRoutes(
         {
           'lat': _currentLocation!.latitude,
@@ -345,3 +352,4 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     );
   }
 }
+

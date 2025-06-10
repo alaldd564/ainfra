@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-// 🔐 Tmap API 키
 const String tmapApiKey = 'pcYktIoix72G2CzONg9ZG7W6Ks5q6En75ooM09H8';
 
 // 🔹 현재 시간 포맷 (API용)
@@ -38,16 +38,16 @@ String calculateDirection(List prev, List curr) {
   return '서쪽 방향';
 }
 
-// 🔹 Firestore 저장 (사용자 ID 기반)
+// 🔹 Firestore 저장 (UID 기반)
 Future<void> saveRouteStepsToFirestore(
-    String generatedId,
+    String uid,
     Map<String, double> start,
     Map<String, double> end,
     List<Map<String, dynamic>> stepData) async {
   final routeId = "route_${DateTime.now().millisecondsSinceEpoch}";
   await FirebaseFirestore.instance
       .collection('routes')
-      .doc(generatedId)
+      .doc(uid)
       .collection('user_routes')
       .doc(routeId)
       .set({
@@ -136,7 +136,6 @@ Future<List<String>> generateStepByStepGuidanceAndSave(
 
 // 🔹 하이브리드 경로 생성 및 저장
 Future<List<List<String>>> generateAllHybridRoutes(
-    String generatedId,
     Map<String, double> start,
     Map<String, double> end) async {
   final url = 'https://apis.openapi.sk.com/transit/routes?version=1&format=json';
@@ -165,6 +164,8 @@ Future<List<List<String>>> generateAllHybridRoutes(
 
   final data = json.decode(response.body);
   final itineraries = data['metaData']['plan']['itineraries'] as List;
+
+  final uid = FirebaseAuth.instance.currentUser?.uid ?? "unknown_user";
 
   List<List<String>> allRoutes = [];
 
@@ -207,7 +208,7 @@ Future<List<List<String>>> generateAllHybridRoutes(
     guide.insert(2, "🚶 도보 시간: ${(totalWalkTime / 60).round()}분");
     guide.insert(3, "🧭 이용 수단: ${transportModes.join(', ')}");
 
-    await saveRouteStepsToFirestore(generatedId, start, end, stepRecords);
+    await saveRouteStepsToFirestore(uid, start, end, stepRecords);
     allRoutes.add(guide);
   }
 
