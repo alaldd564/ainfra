@@ -2,12 +2,11 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/material.dart';
 
+// 🔐 Tmap API 키
 const String tmapApiKey = 'pcYktIoix72G2CzONg9ZG7W6Ks5q6En75ooM09H8';
 
-// 현재 시간 포맷 (API용)
+// 🔹 현재 시간 포맷 (API용)
 String formatSearchTime(DateTime dt) {
   return "${dt.year.toString().padLeft(4, '0')}"
       "${dt.month.toString().padLeft(2, '0')}"
@@ -16,7 +15,7 @@ String formatSearchTime(DateTime dt) {
       "${dt.minute.toString().padLeft(2, '0')}";
 }
 
-// 거리 계산 (Haversine 공식)
+// 🔹 거리 계산 (Haversine 공식)
 double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
   const R = 6371000;
   final dLat = (lat2 - lat1) * pi / 180;
@@ -28,7 +27,7 @@ double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
   return R * c;
 }
 
-// 방향 계산
+// 🔹 방향 계산
 String calculateDirection(List prev, List curr) {
   final dx = curr[0] - prev[0];
   final dy = curr[1] - prev[1];
@@ -39,13 +38,19 @@ String calculateDirection(List prev, List curr) {
   return '서쪽 방향';
 }
 
-// 종합 경로 문서와 자형을 Firestore에 저장
+// 🔹 Firestore 저장 (사용자 ID 기반)
 Future<void> saveRouteStepsToFirestore(
+    String generatedId,
     Map<String, double> start,
     Map<String, double> end,
     List<Map<String, dynamic>> stepData) async {
-  final docId = "route_${DateTime.now().millisecondsSinceEpoch}";
-  await FirebaseFirestore.instance.collection('routes').doc(docId).set({
+  final routeId = "route_${DateTime.now().millisecondsSinceEpoch}";
+  await FirebaseFirestore.instance
+      .collection('routes')
+      .doc(generatedId)
+      .collection('user_routes')
+      .doc(routeId)
+      .set({
     'createdAt': FieldValue.serverTimestamp(),
     'start': start,
     'end': end,
@@ -53,11 +58,9 @@ Future<void> saveRouteStepsToFirestore(
   });
 }
 
-// 보효 경로 API 호출
+// 🔹 보행 경로 API 호출
 Future<List<Map<String, dynamic>>> getPedestrianRoute(
     Map<String, double> start, Map<String, double> end) async {
-  await Future.delayed(Duration(milliseconds: 300));
-
   final url = 'https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1&format=json';
   final headers = {
     'accept': 'application/json',
@@ -80,12 +83,12 @@ Future<List<Map<String, dynamic>>> getPedestrianRoute(
     final features = data['features'] as List<dynamic>;
     return features.map((e) => e as Map<String, dynamic>).toList();
   } else {
-    print("\u{1F6AB} 보행 API 실패: ${response.statusCode}");
+    print("🚫 보행 API 실패: ${response.statusCode}");
     return [];
   }
 }
 
-// 경로 안내원 + Firestore에 step정보 저장해주기
+// 🔹 경로 안내 문구 및 Step 정보 생성
 Future<List<String>> generateStepByStepGuidanceAndSave(
     List<Map<String, dynamic>> features,
     List<Map<String, dynamic>> stepsRecord) async {
@@ -131,9 +134,11 @@ Future<List<String>> generateStepByStepGuidanceAndSave(
   return guide;
 }
 
-// 하이브리드 경로 개선 (도보 + 대중군)
+// 🔹 하이브리드 경로 생성 및 저장
 Future<List<List<String>>> generateAllHybridRoutes(
-    Map<String, double> start, Map<String, double> end) async {
+    String generatedId,
+    Map<String, double> start,
+    Map<String, double> end) async {
   final url = 'https://apis.openapi.sk.com/transit/routes?version=1&format=json';
   final headers = {
     'accept': 'application/json',
@@ -152,7 +157,7 @@ Future<List<List<String>>> generateAllHybridRoutes(
 
   final response = await http.post(Uri.parse(url), headers: headers, body: body);
   if (response.statusCode != 200) {
-    print("\u{1F6AB} 대중교통 API 실패: ${response.statusCode}");
+    print("🚫 대중교통 API 실패: ${response.statusCode}");
     return [
       ["❌ 경로 안내를 불러오지 못했습니다."]
     ];
@@ -202,7 +207,7 @@ Future<List<List<String>>> generateAllHybridRoutes(
     guide.insert(2, "🚶 도보 시간: ${(totalWalkTime / 60).round()}분");
     guide.insert(3, "🧭 이용 수단: ${transportModes.join(', ')}");
 
-    await saveRouteStepsToFirestore(start, end, stepRecords);
+    await saveRouteStepsToFirestore(generatedId, start, end, stepRecords);
     allRoutes.add(guide);
   }
 
