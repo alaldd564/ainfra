@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/services.dart';
-// import 'package:flutter_tts/flutter_tts.dart';  // TTS 비활성화
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '../services/auth_service.dart';
-import 'left_sos_screen.dart';
+import '../services/location_service.dart';
+import 'location_share_screen.dart';
 import 'right_settings_screen.dart';
 import 'top_taxi_screen.dart';
 import 'bottom_naviate_screen.dart';
 import 'tmap_launch_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
+
 
 class BlindHomeScreen extends StatefulWidget {
   const BlindHomeScreen({super.key});
@@ -20,42 +20,25 @@ class BlindHomeScreen extends StatefulWidget {
 
 class _BlindHomeScreenState extends State<BlindHomeScreen> {
   static final AuthService _authService = AuthService();
-  // final FlutterTts _tts = FlutterTts(); // TTS 비활성화
-  double _speechRate = 0.5;
-  bool _ttsEnabled = true;
 
   final List<Map<String, dynamic>> _menuItems = [
-    {
-      'label': '밝기 설정',
-      'screen': const RightSettingsScreen(),
-    },
-    {
-      'label': 'SOS 호출',
-      'screen': const LeftSosScreen(),
-    },
-    {
-      'label': '길찾기',
-      'screen': const BottomNavigateScreen(),
-    },
-    {
-      'label': '택시 호출',
-      'screen': const TopTaxiScreen(),
-    },
-    {
-      'label': '지도 테스트',
-      'screen': const TmapLaunchScreen(),
-    },
+    {'label': '위치 공유하기', 'screen': const LocationShareScreen()},
+    {'label': '길찾기', 'screen': const BottomNavigateScreen()},
+    {'label': '택시 호출', 'screen': const TopTaxiScreen()},
+    {'label': '설정', 'screen': const RightSettingsScreen()},
+    {'label': '지도 테스트', 'screen': const TmapLaunchScreen()},
   ];
 
-  /*
-  Future<void> _speak(String text) async {
-    if (!_ttsEnabled) return;
-    await _tts.setLanguage("ko-KR");
-    await _tts.setSpeechRate(_speechRate);
-    await _tts.awaitSpeakCompletion(true);
-    await _tts.speak(text);
+  @override
+  void initState() {
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      LocationService().startTrackingAndSend(userId: user.uid);
+    } else {
+      print("❌ 사용자 인증 정보 없음");
+    }
   }
-  */
 
   void _handleMenu(BuildContext context, String value) async {
     switch (value) {
@@ -65,14 +48,13 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
           Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
         }
         break;
-
       case 'help':
         if (!context.mounted) return;
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('도움말'),
-            content: const Text('리스트에서 원하는 기능을 선택하세요. TTS로 안내됩니다.'),
+            content: const Text('기능 목록을 선택하면 해당 화면으로 이동합니다.'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -82,7 +64,6 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
           ),
         );
         break;
-
       case 'generate_id':
         final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
         final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -152,50 +133,21 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: Icon(
-                  _ttsEnabled ? Icons.volume_up : Icons.volume_off,
-                  color: Colors.white,
-                ),
-                onPressed: () {
-                  setState(() {
-                    _ttsEnabled = !_ttsEnabled;
-                  });
-                },
-              ),
-              Slider(
-                value: _speechRate,
-                onChanged: (value) {
-                  setState(() {
-                    _speechRate = value;
-                  });
-                },
-                min: 0.1,
-                max: 1.0,
-                divisions: 9,
-                label: "속도: ${_speechRate.toStringAsFixed(1)}",
-              ),
-            ],
-          ),
           Expanded(
             child: ListView.builder(
               itemCount: _menuItems.length,
               itemBuilder: (context, index) {
                 final item = _menuItems[index];
                 return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  margin:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   color: Colors.yellow[100],
                   child: InkWell(
-                    onTap: () async {
-                      // await _speak('${item['label']}화면으로 이동합니다'); // TTS 호출 주석 처리
-                      await Future.delayed(const Duration(milliseconds: 500));
-                      if (!context.mounted) return;
+                    onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => item['screen']),
+                        MaterialPageRoute(
+                            builder: (context) => item['screen']),
                       );
                     },
                     child: Container(
