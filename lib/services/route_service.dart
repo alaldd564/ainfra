@@ -1,18 +1,22 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-const String tmapApiKey = 'gvtcaFKZy01ZmlWn54hMQazLlazJ0a051IsKZCYc';
+const String tmapApiKey = 'LDmVd50ZWn1mmRPfljVXE5dr7QPkKtpC8e2BgiZd';
 
 String formatSearchTime(DateTime dt) {
   return "${dt.year.toString().padLeft(4, '0')}"
-         "${dt.month.toString().padLeft(2, '0')}"
-         "${dt.day.toString().padLeft(2, '0')}"
-         "${dt.hour.toString().padLeft(2, '0')}"
-         "${dt.minute.toString().padLeft(2, '0')}";
+      "${dt.month.toString().padLeft(2, '0')}"
+      "${dt.day.toString().padLeft(2, '0')}"
+      "${dt.hour.toString().padLeft(2, '0')}"
+      "${dt.minute.toString().padLeft(2, '0')}";
 }
 
-Future<List<List<String>>> getAllTransitRoutes(Map<String, double> start, Map<String, double> end) async {
-  final url = 'https://apis.openapi.sk.com/transit/routes?version=1&format=json';
+Future<List<List<String>>> getAllTransitRoutes(
+  Map<String, double> start,
+  Map<String, double> end,
+) async {
+  final url =
+      'https://apis.openapi.sk.com/transit/routes?version=1&format=json';
   final headers = {
     'accept': 'application/json',
     'Content-Type': 'application/json',
@@ -30,7 +34,11 @@ Future<List<List<String>>> getAllTransitRoutes(Map<String, double> start, Map<St
     'sort': '0',
   });
 
-  final response = await http.post(Uri.parse(url), headers: headers, body: body);
+  final response = await http.post(
+    Uri.parse(url),
+    headers: headers,
+    body: body,
+  );
   List<List<String>> allRoutes = [];
 
   if (response.statusCode == 200) {
@@ -42,8 +50,13 @@ Future<List<List<String>>> getAllTransitRoutes(Map<String, double> start, Map<St
       List<String> guideTexts = [];
       final totalTime = (itinerary['totalTime'] / 60).round();
       final transfers = itinerary['transferCount'];
-      final trafficTypes = itinerary['legs'].map((leg) => leg['mode']).toSet().join(', ');
-      guideTexts.add("⏱️ 총 소요 시간: ${totalTime}분 | 🔁 환승 ${transfers}회 | 🚊 이용수단: ${trafficTypes}");
+      final trafficTypes = itinerary['legs']
+          .map((leg) => leg['mode'])
+          .toSet()
+          .join(', ');
+      guideTexts.add(
+        "⏱️ 총 소요 시간: ${totalTime}분 | 🔁 환승 ${transfers}회 | 🚊 이용수단: ${trafficTypes}",
+      );
 
       final Set<String> seenLegs = {};
 
@@ -70,7 +83,9 @@ Future<List<List<String>>> getAllTransitRoutes(Map<String, double> start, Map<St
           final line = leg['route'] ?? '알 수 없음';
           final startStation = leg['start']['name'];
           final endStation = leg['end']['name'];
-          guideTexts.add("🚇 ${startStation}역에서 ${line}호선 탑승 → ${endStation}역 하차");
+          guideTexts.add(
+            "🚇 ${startStation}역에서 ${line}호선 탑승 → ${endStation}역 하차",
+          );
         }
       }
 
@@ -85,7 +100,7 @@ Future<List<List<String>>> getAllTransitRoutes(Map<String, double> start, Map<St
 
 Future<void> main() async {
   final start = {'lat': 37.5665, 'lng': 126.9780}; // 서울시청
-  final end = {'lat': 37.5010, 'lng': 127.0254};   // 강남역
+  final end = {'lat': 37.5010, 'lng': 127.0254}; // 강남역
 
   print('\n📍 출발지: ${start['lat']}, ${start['lng']}');
   print('📍 도착지: ${end['lat']}, ${end['lng']}\n');

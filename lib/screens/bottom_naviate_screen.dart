@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
@@ -95,7 +96,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
           _speech.stop();
           _speakThen(
             () => setState(() => _isReadyForDoubleTap = true),
-            '$recognizedText이 맞으신가요? 맞으시다면 화면을 두 번 터치해주세요.',
+            '$recognizedText이 맞으신가요? 맞으시다면 화면을 두 번 터치해주세요.\n혹시 잘못 인식되었다면, 아래의 버튼을 눌러 다시 입력해주세요.',
           );
         }
       },
@@ -123,8 +124,13 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
       );
 
       if (places.isEmpty) {
-        _speak("목적지 위치를 찾을 수 없습니다.");
+        _speak("목적지 위치를 찾을 수 없습니다. 가게명과 지명을 함께 입력하면 더 정확한 결과를 얻을 수 있습니다.");
         return;
+      }
+
+      // 스마트 정렬: 정확 일치 먼저, 나머지는 거리순
+      if (_currentLocation != null && places.length > 1) {
+        sortCandidatesSmart(places, _currentLocation!, recognizedText);
       }
 
       if (places.length == 1) {
@@ -168,9 +174,56 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     }
   }
 
+  // 거리 계산 (Haversine 공식)
+  double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const double R = 6371000; // 지구 반지름 (m)
+    final double dLat = (lat2 - lat1) * (pi / 180);
+    final double dLon = (lon2 - lon1) * (pi / 180);
+    final double a =
+        sin(dLat / 2) * sin(dLat / 2) +
+        cos(lat1 * (pi / 180)) *
+            cos(lat2 * (pi / 180)) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
+    final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * c;
+  }
+
+  // 스마트 정렬: 입력값과 정확 일치한 이름을 1순위로, 나머지는 거리순 정렬
+  void sortCandidatesSmart(
+    List<PlaceCandidate> places,
+    NLatLng currentLocation,
+    String keyword,
+  ) {
+    final exactMatches =
+        places.where((p) => p.name.trim() == keyword.trim()).toList();
+    final others =
+        places.where((p) => p.name.trim() != keyword.trim()).toList();
+
+    others.sort((a, b) {
+      final distA = calculateDistance(
+        currentLocation.latitude,
+        currentLocation.longitude,
+        a.latitude,
+        a.longitude,
+      );
+      final distB = calculateDistance(
+        currentLocation.latitude,
+        currentLocation.longitude,
+        b.latitude,
+        b.longitude,
+      );
+      return distA.compareTo(distB);
+    });
+
+    places
+      ..clear()
+      ..addAll(exactMatches)
+      ..addAll(others);
+  }
+
   void _showKakaoLocationSelection(List<PlaceCandidate> places) async {
-    // 후보를 모두 읽어주는 대신 후보 개수만 안내
-    await _speak('검색 결과, 총 ${places.length}개의 후보가 있습니다. 화면에서 원하는 장소를 선택해 주세요.');
+    await _speak('검색 결과, ${places.length}가지의 후보가 있습니다. 화면에서 원하는 장소를 선택해 주세요.');
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -179,10 +232,25 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
             itemCount: places.length,
             itemBuilder: (context, index) {
               final p = places[index];
+              String distanceString = '';
+              if (_currentLocation != null) {
+                final distance = calculateDistance(
+                  _currentLocation!.latitude,
+                  _currentLocation!.longitude,
+                  p.latitude,
+                  p.longitude,
+                );
+                if (distance < 1000) {
+                  distanceString = "  📍${distance.toStringAsFixed(0)}m";
+                } else {
+                  distanceString =
+                      "  📍${(distance / 1000).toStringAsFixed(1)}km";
+                }
+              }
               return Semantics(
                 label: '${index + 1}번, ${p.name}, ${p.address}',
                 child: ListTile(
-                  title: Text('${p.name}'),
+                  title: Text('${p.name}$distanceString'),
                   subtitle: Text(
                     '${p.address}\n위도: ${p.latitude}, 경도: ${p.longitude}',
                   ),
@@ -343,7 +411,10 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                         setState(() {
                           isModeSelected = true;
                           isTextMode = false;
-                          _speakThen(() => _initializeSpeech(), '목적지를 말씀해주세요.');
+                          _speakThen(
+                            () => _initializeSpeech(),
+                            '목적지를 말씀해주세요. 더 정확한 검색을 위해 가게명과 지명을 함께 말씀하시면 좋습니다.',
+                          );
                         });
                       },
                       icon: const Icon(Icons.mic),
@@ -374,7 +445,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                         controller: _textController,
                         style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(
-                          hintText: '목적지를 입력하세요',
+                          hintText: '목적지를 입력하세요 (예: 스타벅스 하단역)',
                           hintStyle: TextStyle(color: Colors.white54),
                           enabledBorder: UnderlineInputBorder(
                             borderSide: BorderSide(color: Colors.white54),
@@ -423,6 +494,25 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                         ElevatedButton(
                           onPressed: _handleDoubleTap,
                           child: const Text('경로 안내 시작'),
+                        ),
+                      if (_isReadyForDoubleTap &&
+                          !_isTtsSpeaking &&
+                          recognizedText.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12.0),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                recognizedText = '';
+                                _isReadyForDoubleTap = false;
+                                _startListening();
+                              });
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey[700],
+                            ),
+                            child: const Text('다시 말하기'),
+                          ),
                         ),
                     ],
                   ),

@@ -9,7 +9,7 @@ class MapActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         val tmapView = TMapView(this)
-        tmapView.setSKTMapApiKey("NsxOESGJ823yk2Nyvwcf15sSqaYMBXlw1L4UBmoa")
+        tmapView.setSKTMapApiKey("LDmVd50ZWn1mmRPfljVXE5dr7QPkKtpC8e2BgiZd")
 
         setContentView(tmapView) // ✅ 먼저 뷰를 attach 해줍니다
 

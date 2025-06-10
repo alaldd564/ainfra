@@ -6,7 +6,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 
 # TMAP API 키
-TMAP_API_KEY = "gvtcaFKZy01ZmlWn54hMQazLlazJ0a051IsKZCYc"
+TMAP_API_KEY = "LDmVd50ZWn1mmRPfljVXE5dr7QPkKtpC8e2BgiZd"
 
 # Firebase Admin SDK 초기화
 cred = credentials.Certificate("t111-5d2a9-firebase-adminsdk-fbsvc-1f254349b3.json")  # 서비스 계정 JSON 경로

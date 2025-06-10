@@ -48,7 +48,7 @@
         <!-- ✅ TMAP 지도 API KEY -->
         <meta-data
             android:name="com.skt.tmap.maps.API_KEY"
-            android:value="NsxOESGJ823yk2Nyvwcf15sSqaYMBXlw1L4UBmoa" />
+            android:value="LDmVd50ZWn1mmRPfljVXE5dr7QPkKtpC8e2BgiZd" />
 
         <!-- ✅ 네이버 지도 CLIENT_ID 등록 -->
         <meta-data
