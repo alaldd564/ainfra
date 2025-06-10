@@ -142,7 +142,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   void _startRoutingTo(Location dest) async {
     final destination = NLatLng(dest.latitude, dest.longitude);
     if (_currentLocation != null) {
-      final routes = await getAllTransitRoutes(
+      final routes = await generateAllHybridRoutes(
         {
           'lat': _currentLocation!.latitude,
           'lng': _currentLocation!.longitude,
