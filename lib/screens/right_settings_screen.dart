@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RightSettingsScreen extends StatefulWidget {
   const RightSettingsScreen({Key? key}) : super(key: key);
@@ -10,6 +12,66 @@ class RightSettingsScreen extends StatefulWidget {
 class _RightSettingsScreenState extends State<RightSettingsScreen> {
   bool _ttsEnabled = true;
   double _speechRate = 0.5;
+  final FlutterTts _flutterTts = FlutterTts();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool('ttsEnabled') ?? true;
+    final rate = prefs.getDouble('speechRate') ?? 0.5;
+
+    setState(() {
+      _ttsEnabled = enabled;
+      _speechRate = rate;
+    });
+
+    await _flutterTts.setSpeechRate(_speechRate);
+
+    if (_ttsEnabled) {
+      await _flutterTts.speak('음성 안내가 켜졌습니다.');
+    }
+  }
+
+  Future<void> _toggleTts(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('ttsEnabled', enabled);
+
+    setState(() {
+      _ttsEnabled = enabled;
+    });
+
+    if (enabled) {
+      await _flutterTts.speak('음성 안내가 켜졌습니다.');
+    } else {
+      await _flutterTts.stop();
+    }
+  }
+
+  Future<void> _setSpeechRate(double rate) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('speechRate', rate);
+
+    setState(() {
+      _speechRate = rate;
+    });
+
+    await _flutterTts.setSpeechRate(rate);
+
+    if (_ttsEnabled) {
+      await _flutterTts.speak('음성 속도가 변경되었습니다.');
+    }
+  }
+
+  @override
+  void dispose() {
+    _flutterTts.stop();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,16 +91,12 @@ class _RightSettingsScreenState extends State<RightSettingsScreen> {
           children: [
             SwitchListTile(
               title: const Text(
-                '음성 on/off',
+                '음성 안내',
                 style: TextStyle(color: Colors.white, fontSize: 18),
               ),
               value: _ttsEnabled,
               activeColor: const Color(0xFFFFD400),
-              onChanged: (value) {
-                setState(() {
-                  _ttsEnabled = value;
-                });
-              },
+              onChanged: _toggleTts,
             ),
             ListTile(
               title: const Text(
@@ -53,9 +111,7 @@ class _RightSettingsScreenState extends State<RightSettingsScreen> {
                 label: _speechRate.toStringAsFixed(1),
                 activeColor: const Color(0xFFFFD400),
                 onChanged: (value) {
-                  setState(() {
-                    _speechRate = value;
-                  });
+                  _setSpeechRate(value);
                 },
               ),
             ),
