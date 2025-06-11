@@ -3,15 +3,18 @@ import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'dart:async';
+import 'dart:math';
 
 class LocationService {
   Timer? _timer;
+  double? _lastLat;
+  double? _lastLng;
 
   /// 위치 권한 요청 + 주기적으로 위치 전송
   Future<void> startTrackingAndSend({
     required String userId,
     LocationAccuracy accuracy = LocationAccuracy.best,
-    Duration interval = const Duration(seconds: 10),
+    Duration interval = const Duration(seconds: 3),
     String serverUrl = "https://tmap-backend.onrender.com/update_location",
   }) async {
     LocationPermission permission = await Geolocator.checkPermission();
@@ -99,21 +102,34 @@ class LocationService {
     }
   }
 
-  /// Firebase Firestore에 위치 저장 (마커 표시용)
+  /// Firebase Firestore에 위치 + angle 저장
   Future<void> updateFirestoreLocation({
     required String userId,
     required double latitude,
     required double longitude,
   }) async {
     try {
+      double? angle;
+
+      if (_lastLat != null && _lastLng != null) {
+        final dx = longitude - _lastLng!;
+        final dy = latitude - _lastLat!;
+        angle = atan2(dy, dx) * 180 / pi;
+        if (angle < 0) angle += 360; // 음수 방지
+      }
+
+      _lastLat = latitude;
+      _lastLng = longitude;
+
       await FirebaseFirestore.instance.collection('locations').doc(userId).set({
         'lat': latitude,
         'lng': longitude,
         'timestamp': Timestamp.now(),
         'location_shared': true,
+        if (angle != null) 'angle': angle,
       }, SetOptions(merge: true));
 
-      print('✅ Firebase에 위치 저장 완료');
+      print('✅ Firebase에 위치 + angle 저장 완료: ${angle?.toStringAsFixed(2)}°');
     } catch (e) {
       print('❌ Firebase 저장 실패: $e');
     }
