@@ -4,9 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-const String tmapApiKey = 'pcYktIoix72G2CzONg9ZG7W6Ks5q6En75ooM09H8';
+const String tmapApiKey = '9OYhsHdVeE15l8mol1UWr7BoQyv5BWvr38k1sXvs';
 
-// 🔹 현재 시간 포맷 (API용)
 String formatSearchTime(DateTime dt) {
   return "${dt.year.toString().padLeft(4, '0')}"
       "${dt.month.toString().padLeft(2, '0')}"
@@ -15,19 +14,17 @@ String formatSearchTime(DateTime dt) {
       "${dt.minute.toString().padLeft(2, '0')}";
 }
 
-// 🔹 거리 계산 (Haversine 공식)
 double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
   const R = 6371000;
   final dLat = (lat2 - lat1) * pi / 180;
   final dLon = (lon2 - lon1) * pi / 180;
   final a = sin(dLat / 2) * sin(dLat / 2) +
       cos(lat1 * pi / 180) * cos(lat2 * pi / 180) *
-          sin(dLon / 2) * sin(dLon / 2);
+      sin(dLon / 2) * sin(dLon / 2);
   final c = 2 * atan2(sqrt(a), sqrt(1 - a));
   return R * c;
 }
 
-// 🔹 방향 계산
 String calculateDirection(List prev, List curr) {
   final dx = curr[0] - prev[0];
   final dy = curr[1] - prev[1];
@@ -38,13 +35,12 @@ String calculateDirection(List prev, List curr) {
   return '서쪽 방향';
 }
 
-// 🔹 Firestore 저장 (UID 기반)
 Future<void> saveRouteStepsToFirestore(
     String uid,
+    String routeId,
     Map<String, double> start,
     Map<String, double> end,
     List<Map<String, dynamic>> stepData) async {
-  final routeId = "route_${DateTime.now().millisecondsSinceEpoch}";
   await FirebaseFirestore.instance
       .collection('routes')
       .doc(uid)
@@ -58,7 +54,6 @@ Future<void> saveRouteStepsToFirestore(
   });
 }
 
-// 🔹 보행 경로 API 호출
 Future<List<Map<String, dynamic>>> getPedestrianRoute(
     Map<String, double> start, Map<String, double> end) async {
   final url = 'https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1&format=json';
@@ -88,7 +83,6 @@ Future<List<Map<String, dynamic>>> getPedestrianRoute(
   }
 }
 
-// 🔹 경로 안내 문구 및 Step 정보 생성
 Future<List<String>> generateStepByStepGuidanceAndSave(
     List<Map<String, dynamic>> features,
     List<Map<String, dynamic>> stepsRecord) async {
@@ -120,22 +114,28 @@ Future<List<String>> generateStepByStepGuidanceAndSave(
         }
       }
     } else if (type == 'Point') {
+      final coords = geometry['coordinates'];
       final desc = properties['description']
           ?.replaceAll('<b>', '')
           .replaceAll('</b>', '')
           .trim();
-      if (desc != null && desc.isNotEmpty) {
+      if (desc != null && desc.isNotEmpty && coords is List && coords.length >= 2) {
         final text = "📍 $desc";
         guide.add(text);
-        stepsRecord.add({'text': text, 'type': 'Point'});
+        stepsRecord.add({
+          'text': text,
+          'lat': coords[1],
+          'lng': coords[0],
+          'type': 'Point',
+        });
       }
     }
   }
+
   return guide;
 }
 
-// 🔹 하이브리드 경로 생성 및 저장
-Future<List<List<String>>> generateAllHybridRoutes(
+Future<List<Map<String, dynamic>>> generateAllHybridRoutes(
     Map<String, double> start,
     Map<String, double> end) async {
   final url = 'https://apis.openapi.sk.com/transit/routes?version=1&format=json';
@@ -158,7 +158,10 @@ Future<List<List<String>>> generateAllHybridRoutes(
   if (response.statusCode != 200) {
     print("🚫 대중교통 API 실패: ${response.statusCode}");
     return [
-      ["❌ 경로 안내를 불러오지 못했습니다."]
+      {
+        'route_id': 'error',
+        'lines': ["❌ 경로 안내를 불러오지 못했습니다."]
+      }
     ];
   }
 
@@ -167,7 +170,7 @@ Future<List<List<String>>> generateAllHybridRoutes(
 
   final uid = FirebaseAuth.instance.currentUser?.uid ?? "unknown_user";
 
-  List<List<String>> allRoutes = [];
+  List<Map<String, dynamic>> allRoutes = [];
 
   for (final itinerary in itineraries) {
     final List<String> guide = [];
@@ -199,17 +202,34 @@ Future<List<List<String>>> generateAllHybridRoutes(
         final walkGuide = await generateStepByStepGuidanceAndSave(features, stepRecords);
         guide.addAll(walkGuide);
       } else if (mode == 'SUBWAY') {
-        guide.add("🚇 ${leg['start']['name']}역에서 ${leg['route']} 탑승 → ${leg['end']['name']}역 하차");
+        final text = "🚇 ${leg['start']['name']}역에서 ${leg['route']} 탑승 → ${leg['end']['name']}역 하차";
+        guide.add(text);
+        stepRecords.add({
+          'text': text,
+          'lat': (leg['start']['lat'] as num).toDouble(),
+          'lng': (leg['start']['lon'] as num).toDouble(),
+        });
       } else if (mode == 'BUS') {
-        guide.add("🚌 ${leg['start']['name']}에서 ${leg['route']} 버스 탑승 → ${leg['end']['name']} 하차");
+        final text = "🚌 ${leg['start']['name']}에서 ${leg['route']} 버스 탑승 → ${leg['end']['name']} 하차";
+        guide.add(text);
+        stepRecords.add({
+          'text': text,
+          'lat': (leg['start']['lat'] as num).toDouble(),
+          'lng': (leg['start']['lon'] as num).toDouble(),
+        });
       }
     }
 
     guide.insert(2, "🚶 도보 시간: ${(totalWalkTime / 60).round()}분");
     guide.insert(3, "🧭 이용 수단: ${transportModes.join(', ')}");
 
-    await saveRouteStepsToFirestore(uid, start, end, stepRecords);
-    allRoutes.add(guide);
+    final routeId = "route_${DateTime.now().millisecondsSinceEpoch}";
+    await saveRouteStepsToFirestore(uid, routeId, start, end, stepRecords);
+
+    allRoutes.add({
+      'route_id': routeId,
+      'lines': guide,
+    });
   }
 
   return allRoutes;

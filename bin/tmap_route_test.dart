@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'dart:async';
 
-const String tmapApiKey = 'NHpg5s6pEl1iLDgkLUZ346k7D0M6GsY3ebyJyzbh';
+const String tmapApiKey = '9OYhsHdVeE15l8mol1UWr7BoQyv5BWvr38k1sXvs';
 
 // 시간 포맷
 String formatSearchTime(DateTime dt) {
@@ -149,7 +149,7 @@ Future<List<String>> generateHybridRoute(Map<String, double> start, Map<String, 
 
   guide.insert(2, "🚶 도보 시간: ${(totalWalkTime / 60).round()}분");
   guide.insert(3, "🧭 이용 수단: ${transportModes.join(', ')}");
-
+  
   return guide;
 }
 

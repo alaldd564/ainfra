@@ -11,6 +11,8 @@ import 'right_settings_screen.dart';
 import 'top_taxi_screen.dart';
 import 'bottom_naviate_screen.dart';
 import 'tmap_launch_screen.dart';
+import 'firestore_steps_screen.dart';
+import 'tts_manager.dart'; // ✅ 추가
 
 class BlindHomeScreen extends StatefulWidget {
   const BlindHomeScreen({super.key});
@@ -28,7 +30,7 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
     {'label': '길찾기', 'screen': const BottomNavigateScreen()},
     {'label': '택시 호출', 'screen': const TopTaxiScreen()},
     {'label': '설정', 'screen': const RightSettingsScreen()},
-    {'label': '지도 테스트', 'screen': const TmapLaunchScreen()},
+    // {'label': '지도 테스트', 'screen': const FirestoreStepsScreen()},
   ];
 
   @override
@@ -43,10 +45,7 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
   }
 
   Future<void> _speak(String text) async {
-    await _tts.setLanguage("ko-KR");
-    await _tts.setSpeechRate(0.5);
-    await _tts.awaitSpeakCompletion(true);
-    await _tts.speak(text);
+    await TtsManager.speakIfEnabled(_tts, text); // ✅ TtsManager 적용
   }
 
   void _handleMenu(BuildContext context, String value) async {
@@ -148,8 +147,7 @@ class _BlindHomeScreenState extends State<BlindHomeScreen> {
               itemBuilder: (context, index) {
                 final item = _menuItems[index];
                 return Card(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   color: Colors.yellow[100],
                   child: InkWell(
                     onTap: () async {

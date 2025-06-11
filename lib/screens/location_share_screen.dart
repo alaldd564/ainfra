@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:geolocator/geolocator.dart'; // ✅ 위치 정보 가져오기 위해 추가
+import 'package:geolocator/geolocator.dart';
+import '../screens/tts_manager.dart';
 
 class LocationShareScreen extends StatefulWidget {
   const LocationShareScreen({super.key});
@@ -27,7 +28,6 @@ class _LocationShareScreenState extends State<LocationShareScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    // blind_users 문서에서 generatedId 찾기
     final snapshot = await FirebaseFirestore.instance
         .collection('blind_users')
         .where('uid', isEqualTo: uid)
@@ -60,7 +60,6 @@ class _LocationShareScreenState extends State<LocationShareScreen> {
       'last_updated': FieldValue.serverTimestamp(),
     };
 
-    // ✅ 위치 공유를 켜는 경우 현재 위치도 저장
     if (newValue) {
       try {
         final position = await Geolocator.getCurrentPosition(
@@ -80,9 +79,10 @@ class _LocationShareScreenState extends State<LocationShareScreen> {
 
     setState(() => _locationShared = newValue);
 
-    await _tts.setLanguage('ko-KR');
-    await _tts.setSpeechRate(0.5);
-    await _tts.speak(newValue ? '위치 공유가 활성화되었습니다.' : '위치 공유가 비활성화되었습니다.');
+    await TtsManager.speakIfEnabled(
+      _tts,
+      newValue ? '위치 공유가 활성화되었습니다.' : '위치 공유가 비활성화되었습니다.',
+    );
   }
 
   @override

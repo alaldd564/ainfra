@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import '../screens/tts_manager.dart';
 
 class TopTaxiScreen extends StatefulWidget {
   const TopTaxiScreen({super.key});
@@ -35,8 +36,7 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
   };
 
   Future<void> _speakText(String text) async {
-    await _flutterTts.stop();
-    await _flutterTts.speak(text);
+    await TtsManager.speakIfEnabled(_flutterTts, text);
     debugPrint('🗣️ TTS 실행됨: $text');
   }
 
