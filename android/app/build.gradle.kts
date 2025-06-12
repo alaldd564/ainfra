@@ -55,6 +55,6 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation(files("libs/vsm-tmap-sdk-v2-android-1.7.23.aar"))
     implementation(files("libs/tmap-sdk-2.0.aar"))
-    
+    implementation("com.naver.maps:map-sdk:3.21.0")
 
 }

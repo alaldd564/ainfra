@@ -18,7 +18,7 @@ Future<void> main() async {
 
   // ✅ 네이버 지도 초기화
   await FlutterNaverMap().init(
-    clientId: 'iytq4xot6d', // ← 네이버 클라이언트 ID로 교체
+    clientId: 'ey5niviv8s', // ← 네이버 클라이언트 ID로 교체
     onAuthFailed: (e) => debugPrint("네이버 지도 인증 실패: $e"),
   );
 

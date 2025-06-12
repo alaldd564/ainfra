@@ -3,8 +3,7 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-
-/// 🔄 각도(angle)를 북/동/서/남 방향으로 변환
+/// 협수의 각도(angle)를 복석/동/서/남 방향으로 변환
 String _getDirectionFromAngle(double angle) {
   if (angle >= 337.5 || angle < 22.5) return "북쪽";
   if (angle < 67.5) return "북동쪽";
@@ -19,7 +18,7 @@ String _getDirectionFromAngle(double angle) {
 Future<String> generateLLMNavigationGuide({
   required Map<String, double> currentLocation,
   required Map<String, dynamic> step,
-  double? currentAngle, // 🔽 각도 추가
+  double? currentAngle,
 }) async {
   final lat = currentLocation['lat']!;
   final lng = currentLocation['lng']!;
@@ -29,7 +28,6 @@ Future<String> generateLLMNavigationGuide({
 
   final stepDescription = '[$stepLat, $stepLng] → $text';
 
-  // 🔄 현재 방향 설명 추가
   String directionSentence = '';
   if (currentAngle != null) {
     final direction = _getDirectionFromAngle(currentAngle);
@@ -106,7 +104,6 @@ Future<String> getNextGuideSentence({
       return '❌ 유효한 경로 단계가 없습니다';
     }
 
-    // 🔄 angle 정보 Firestore에서 가져오기
     final locDoc = await FirebaseFirestore.instance.collection('locations').doc(uid).get();
     final locData = locDoc.data();
     final double? angle = locData?['angle']?.toDouble();
@@ -134,7 +131,7 @@ Future<String> getNextGuideSentence({
     return await generateLLMNavigationGuide(
       currentLocation: {'lat': lat, 'lng': lng},
       step: targetStep,
-      currentAngle: angle, // 🔽 전달
+      currentAngle: angle,
     );
   } catch (e) {
     print('🔥 getNextGuideSentence 오류: $e');

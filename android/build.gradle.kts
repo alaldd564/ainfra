@@ -15,6 +15,7 @@ allprojects {
         google()
         mavenCentral()
         maven { url = uri("https://storage.googleapis.com/download.flutter.io") } // ✅ Flutter 우선
+        maven("https://repository.map.naver.com/archive/maven")
 }}
 
 val newBuildDir = rootProject.layout.buildDirectory.dir("../../build").get()

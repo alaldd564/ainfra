@@ -123,7 +123,7 @@ class _FirestoreStepsScreenState extends State<FirestoreStepsScreen> {
 
       if (_lastLat != null && _lastLng != null) {
         final moved = _distance(_lastLat!, _lastLng!, currentLat, currentLng);
-        if (moved < 3) return; // 3m 이내면 생략
+        if (moved < 3) return;
       }
 
       _lastLat = currentLat;
@@ -267,48 +267,67 @@ class RouteMapScreen extends StatelessWidget {
         title: const Text('🗺 경로 포인트 지도'),
         backgroundColor: Colors.deepPurple,
       ),
-      body: NaverMap(
-        options: NaverMapViewOptions(
-          initialCameraPosition: NCameraPosition(
-            target: NLatLng(initialLat, initialLng),
-            zoom: 16,
+      body: SizedBox.expand( // ✅ 중요! 지도가 전체 화면 차지하게
+        child: NaverMap(
+          options: NaverMapViewOptions(
+            initialCameraPosition: NCameraPosition(
+              target: NLatLng(initialLat, initialLng),
+              zoom: 16,
+            ),
+            locationButtonEnable: true,
+            scaleBarEnable: true,
           ),
-          locationButtonEnable: true,
-          scaleBarEnable: true,
-        ),
-        onMapReady: (controller) async {
-          for (int i = 0; i < steps.length; i++) {
-            final step = steps[i];
-            final lat = step['lat'];
-            final lng = step['lng'];
-            final text = step['text'] ?? '';
-
-            if (lat != null && lng != null) {
-              final marker = NMarker(
-                id: 'marker_$i',
-                position: NLatLng(lat, lng),
-                caption: NOverlayCaption(
-                  text: '[$i] $text',
+          onMapReady: (controller) async {
+            controller.addOverlay(
+              NMarker(
+                id: 'current_location',
+                position: NLatLng(initialLat, initialLng),
+                caption: const NOverlayCaption(
+                  text: '📍 현재 위치',
                   textSize: 14,
+                  color: Colors.red,
+                ),
+              ),
+            );
+
+            for (int i = 0; i < steps.length; i++) {
+              final step = steps[i];
+              final lat = step['lat'];
+              final lng = step['lng'];
+              final text = step['text'] ?? '';
+
+              if (lat != null && lng != null) {
+                controller.addOverlay(
+                  NMarker(
+                    id: 'marker_$i',
+                    position: NLatLng(lat, lng),
+                    caption: NOverlayCaption(
+                      text: '[$i] $text',
+                      textSize: 14,
+                      color: Colors.blue,
+                    ),
+                  ),
+                );
+              }
+            }
+
+            final path = steps
+                .where((s) => s['lat'] != null && s['lng'] != null)
+                .map((s) => NLatLng(s['lat'], s['lng']))
+                .toList();
+
+            if (path.length >= 2) {
+              controller.addOverlay(
+                NPathOverlay(
+                  id: 'route_line',
+                  coords: path,
+                  width: 4,
                   color: Colors.blue,
                 ),
               );
-              controller.addOverlay(marker);
             }
-          }
-
-          controller.addOverlay(
-            NMarker(
-              id: 'current_location',
-              position: NLatLng(initialLat, initialLng),
-              caption: const NOverlayCaption(
-                text: '📍 현재 위치',
-                textSize: 14,
-                color: Colors.red,
-              ),
-            ),
-          );
-        },
+          },
+        ),
       ),
     );
   }

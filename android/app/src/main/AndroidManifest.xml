@@ -53,7 +53,7 @@
         <!-- ✅ 네이버 지도 CLIENT_ID 등록 -->
         <meta-data
             android:name="com.naver.maps.map.CLIENT_ID"
-            android:value="4aktoebb8w" /> <!-- 네이버 clientId -->
+            android:value="ey5niviv8s" /> <!-- 네이버 clientId -->
 
         <meta-data
             android:name="flutterEmbedding"
