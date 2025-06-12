@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+
 /// 협수의 각도(angle)를 복석/동/서/남 방향으로 변환
 String _getDirectionFromAngle(double angle) {
   if (angle >= 337.5 || angle < 22.5) return "북쪽";
