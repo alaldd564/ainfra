@@ -14,7 +14,6 @@ class TopTaxiScreen extends StatefulWidget {
 
 class TopTaxiScreenState extends State<TopTaxiScreen> {
   final FlutterTts _flutterTts = FlutterTts();
-  bool _firstDoubleTapConfirmed = false;
 
   final Map<String, String> taxiPhoneNumbers = {
     '서울특별시': 'tel:1588-4388',
@@ -56,24 +55,6 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
     } catch (e) {
       debugPrint('카카오T 링크 실행 중 오류: $e');
       await _speakText('카카오택시를 실행하지 못했습니다. 앱이 설치되어 있는지 확인해주세요.');
-    }
-  }
-
-  Future<void> _onDoubleTap() async {
-    if (!_firstDoubleTapConfirmed) {
-      debugPrint('👆 첫 번째 두 번 탭 감지');
-      await _speakText('카카오택시를 부르시겠습니까? 맞으시면 화면을 두 번 터치해주세요.');
-      setState(() {
-        _firstDoubleTapConfirmed = true;
-      });
-    } else {
-      debugPrint('✅ 두 번째 두 번 탭: 카카오택시 실행');
-      await _speakText('브라우저가 열립니다. 열기 버튼을 눌러 카카오택시를 실행하세요.');
-      await Future.delayed(const Duration(seconds: 1));
-      await _launchKakaoTLink();
-      setState(() {
-        _firstDoubleTapConfirmed = false;
-      });
     }
   }
 
@@ -136,18 +117,13 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
     }
   }
 
-  void _handleSwipeDown() async {
-    debugPrint('📞 아래로 스와이프 감지: 장애인 택시 호출');
-    await _getLocationAndCallTaxi();
-  }
-
   @override
   void initState() {
     super.initState();
     _flutterTts.setLanguage('ko-KR');
     _flutterTts.setSpeechRate(0.5);
     _speakText(
-      '장애인 택시와 카카오택시를 호출할 수 있습니다. 장애인 콜택시를 부르시려면 아래로 스와이프를, 카카오택시를 부르시려면 두 번 탭해주세요.',
+      '장애인 콜택시를 부르시려면 첫 번째 버튼을, 카카오택시를 부르시려면 두 번째 버튼을 누르세요.',
     );
   }
 
@@ -156,20 +132,49 @@ class TopTaxiScreenState extends State<TopTaxiScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(title: const Text('택시 호출'), backgroundColor: Colors.green),
-      body: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onDoubleTap: _onDoubleTap,
-        onVerticalDragUpdate: (details) {
-          if (details.primaryDelta != null && details.primaryDelta! > 20) {
-            _handleSwipeDown();
-          }
-        },
-        child: const Center(
-          child: Text(
-            '장애인택시와 카카오택시를 \n호출할 수 있습니다.\n\n장애인 콜택시를 부르시려면\n아래로 스와이프\n카카오택시를 부르시려면\n두 번 탭해주세요.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white, fontSize: 20),
-          ),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              '장애인택시와 카카오택시를\n호출할 수 있습니다.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white, fontSize: 20),
+            ),
+            const SizedBox(height: 40),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _getLocationAndCallTaxi,
+              icon: const Icon(Icons.phone, color: Colors.white),
+              label: const Text(
+                '장애인 콜택시 호출',
+                style: TextStyle(fontSize: 18, color: Colors.white),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () async {
+                await _speakText('브라우저가 열립니다. 열기 버튼을 눌러 카카오택시를 실행하세요.');
+                await Future.delayed(const Duration(seconds: 1));
+                await _launchKakaoTLink();
+              },
+              icon: const Icon(Icons.local_taxi, color: Colors.white),
+              label: const Text(
+                '카카오택시 호출',
+                style: TextStyle(fontSize: 18, color: Colors.white),
+              ),
+            ),
+          ],
         ),
       ),
     );

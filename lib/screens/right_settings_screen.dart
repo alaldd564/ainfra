@@ -54,6 +54,7 @@ class _RightSettingsScreenState extends State<RightSettingsScreen> {
 
   Future<void> _setSpeechRate(double rate) async {
     final prefs = await SharedPreferences.getInstance();
+    rate = rate.clamp(0.1, 1.0); // 범위 제한
     await prefs.setDouble('speechRate', rate);
 
     setState(() {
@@ -98,22 +99,42 @@ class _RightSettingsScreenState extends State<RightSettingsScreen> {
               activeColor: const Color(0xFFFFD400),
               onChanged: _toggleTts,
             ),
-            ListTile(
-              title: const Text(
-                '음성 속도',
-                style: TextStyle(color: Colors.white, fontSize: 18),
-              ),
-              subtitle: Slider(
-                value: _speechRate,
-                min: 0.1,
-                max: 1.0,
-                divisions: 9,
-                label: _speechRate.toStringAsFixed(1),
-                activeColor: const Color(0xFFFFD400),
-                onChanged: (value) {
-                  _setSpeechRate(value);
-                },
-              ),
+            const SizedBox(height: 20),
+            const Text(
+              '음성 속도',
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: _speechRate > 0.1
+                      ? () => _setSpeechRate(_speechRate - 0.1)
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFD400),
+                    foregroundColor: Colors.black,
+                  ),
+                  child: const Text('느리게'),
+                ),
+                const SizedBox(width: 20),
+                Text(
+                  _speechRate.toStringAsFixed(1),
+                  style: const TextStyle(color: Colors.white, fontSize: 18),
+                ),
+                const SizedBox(width: 20),
+                ElevatedButton(
+                  onPressed: _speechRate < 1.0
+                      ? () => _setSpeechRate(_speechRate + 0.1)
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFD400),
+                    foregroundColor: Colors.black,
+                  ),
+                  child: const Text('빠르게'),
+                ),
+              ],
             ),
           ],
         ),

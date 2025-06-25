@@ -200,49 +200,61 @@ class _FirestoreStepsScreenState extends State<FirestoreStepsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Firestore + LLM 안내 테스트'),
-        backgroundColor: Colors.deepPurple,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: steps != null
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(message, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
-                  const Text('📋 LLM 안내 문장', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  Text(llmResponse ?? '⏳ GPT 응답 대기 중...'),
-                  const Divider(),
-                  ElevatedButton(
-                    onPressed: _goToMap,
-                    child: const Text('🗺 경로 포인트 지도 보기'),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text('📌 전체 Steps', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: steps!.length,
-                      itemBuilder: (context, index) {
-                        final step = steps![index];
-                        return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 6),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Text(
-                              step.toString(),
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                          ),
-                        );
-                      },
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pop(context, true);
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Firestore + LLM 안내 테스트'),
+          backgroundColor: Colors.deepPurple,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.pop(context, true);
+            },
+          ),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: steps != null
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(message, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
+                    const Text('📋 LLM 안내 문장', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(llmResponse ?? '⏳ GPT 응답 대기 중...'),
+                    const Divider(),
+                    ElevatedButton(
+                      onPressed: _goToMap,
+                      child: const Text('🗺 경로 포인트 지도 보기'),
                     ),
-                  ),
-                ],
-              )
-            : Center(child: Text(message)),
+                    const SizedBox(height: 10),
+                    const Text('📌 전체 Steps', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: steps!.length,
+                        itemBuilder: (context, index) {
+                          final step = steps![index];
+                          return Card(
+                            margin: const EdgeInsets.symmetric(vertical: 6),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Text(
+                                step.toString(),
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                )
+              : Center(child: Text(message)),
+        ),
       ),
     );
   }

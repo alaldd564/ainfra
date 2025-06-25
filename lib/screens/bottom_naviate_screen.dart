@@ -119,6 +119,10 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
 
       if (places.isEmpty) {
         await _speak("목적지 위치를 찾을 수 없습니다. 가게명과 지명을 함께 말씀해 주세요.");
+        setState(() {
+          _navigating = false;
+          _isReadyForDoubleTap = true;
+        });
         return;
       }
 
@@ -136,6 +140,10 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     } catch (e) {
       print("위치 변환 오류: $e");
       _speak("목적지 변환 중 오류가 발생했습니다.");
+      setState(() {
+        _navigating = false;
+        _isReadyForDoubleTap = true;
+      });
     }
   }
 
@@ -200,7 +208,12 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
           );
         },
       ),
-    );
+    ).whenComplete(() {
+      setState(() {
+        _navigating = false;
+        _isReadyForDoubleTap = true;
+      });
+    });
   }
 
   void _startRoutingTo(NLatLng dest) async {
@@ -290,7 +303,21 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                         final routeId = route['route_id'];
                         if (uid != null && routeId != null) {
                           await _speak('실시간 경로 안내를 시작합니다.');
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => FirestoreStepsScreen(uid: uid, routeId: routeId)));
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => FirestoreStepsScreen(uid: uid, routeId: routeId)),
+                          );
+                          if (result == true) {
+                            setState(() {
+                              guideRoutes = null;
+                              isModeSelected = true;
+                              isTextMode = false;
+                              _isReadyForDoubleTap = false;
+                              recognizedText = '';
+                            });
+                            await _speak('다시 목적지를 말씀해주세요.');
+                            _initializeSpeech();
+                          }
                         }
                       },
                       child: const Text('🚀 실시간 경로 안내'),

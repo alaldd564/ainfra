@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+const String openAIApiKey = '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'; // 실제 키
+
 
 /// 협수의 각도(angle)를 복석/동/서/남 방향으로 변환
 String _getDirectionFromAngle(double angle) {
