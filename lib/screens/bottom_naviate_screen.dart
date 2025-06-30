@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'package:maptest/services/route_service.dart';
 import 'package:maptest/screens/firestore_steps_screen.dart';
@@ -54,12 +55,92 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   List<Map<String, dynamic>>? guideRoutes;
   List<bool> routeExpanded = [];
 
+  List<Map<String, dynamic>> _frequentPlaces = [];
+
   @override
   void initState() {
     super.initState();
     _initializeTTS();
     _speech = stt.SpeechToText();
     _getCurrentLocation();
+    _loadFrequentPlaces();
+  }
+
+  // 🔹 장소 이름 입력 Dialog
+  Future<String?> _showNameInputDialog(BuildContext context) async {
+    String inputName = '';
+    return showDialog<String>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('장소 이름 입력'),
+            content: TextField(
+              autofocus: true,
+              onChanged: (value) => inputName = value,
+              decoration: const InputDecoration(hintText: '예: 집, 회사'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, inputName),
+                child: const Text('저장'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  // 🔹 현재 위치를 Firestore에 저장하는 함수
+  Future<void> _saveCurrentLocationAsFrequentPlace(
+    BuildContext context,
+    NLatLng? currentLocation,
+  ) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || currentLocation == null) {
+      await TtsManager.speakIfEnabled(_tts, '사용자 정보나 현재 위치가 없습니다.');
+      return;
+    }
+
+    final name = await _showNameInputDialog(context);
+    if (name == null || name.trim().isEmpty) return;
+
+    final placeData = {
+      'lat': currentLocation.latitude,
+      'lng': currentLocation.longitude,
+      'added_at': FieldValue.serverTimestamp(),
+    };
+
+    await FirebaseFirestore.instance.collection('frequent_places').doc(uid).set(
+      {name.trim(): placeData},
+      SetOptions(merge: true),
+    );
+
+    await _loadFrequentPlaces();
+    await TtsManager.speakIfEnabled(_tts, '$name 장소를 저장했습니다.');
+  }
+
+  // 🔹 Firestore에서 자주 가는 장소 불러오기
+  Future<void> _loadFrequentPlaces() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final doc =
+        await FirebaseFirestore.instance
+            .collection('frequent_places')
+            .doc(uid)
+            .get();
+    if (doc.exists) {
+      final data = doc.data() ?? {};
+      setState(() {
+        _frequentPlaces =
+            data.entries.map((e) {
+              final v = e.value;
+              return {'name': e.key, 'lat': v['lat'], 'lng': v['lng']};
+            }).toList();
+      });
+    }
   }
 
   void _initializeTTS() {
@@ -69,7 +150,8 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     _tts.setCompletionHandler(() => _isTtsSpeaking = false);
   }
 
-  Future<void> _speak(String text) async => await TtsManager.speakIfEnabled(_tts, text);
+  Future<void> _speak(String text) async =>
+      await TtsManager.speakIfEnabled(_tts, text);
 
   Future<void> _speakThen(Function callback, String text) async {
     await _speak(text);
@@ -97,7 +179,10 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
         if (result.finalResult) {
           recognizedText = result.recognizedWords;
           _speech.stop();
-          _speakThen(() => setState(() => _isReadyForDoubleTap = true), '$recognizedText이 맞으신가요? 화면을 두 번 터치해주세요.');
+          _speakThen(
+            () => setState(() => _isReadyForDoubleTap = true),
+            '$recognizedText이 맞으신가요? 화면을 두 번 터치해주세요.',
+          );
         }
       },
       localeId: 'ko_KR',
@@ -110,12 +195,18 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   }
 
   Future<void> _handleDoubleTap() async {
-    if (_navigating || !_isReadyForDoubleTap || _isTtsSpeaking || recognizedText.isEmpty) return;
+    if (_navigating ||
+        !_isReadyForDoubleTap ||
+        _isTtsSpeaking ||
+        recognizedText.isEmpty)
+      return;
     _navigating = true;
     await _speak('$recognizedText로 경로를 안내합니다.');
 
     try {
-      final List<PlaceCandidate> places = await searchKakaoPlaces(recognizedText);
+      final List<PlaceCandidate> places = await searchKakaoPlaces(
+        recognizedText,
+      );
 
       if (places.isEmpty) {
         await _speak("목적지 위치를 찾을 수 없습니다. 가게명과 지명을 함께 말씀해 주세요.");
@@ -148,36 +239,64 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   }
 
   Future<List<PlaceCandidate>> searchKakaoPlaces(String query) async {
-    final url = 'https://dapi.kakao.com/v2/local/search/keyword.json?query=${Uri.encodeComponent(query)}';
-    final response = await http.get(Uri.parse(url), headers: {'Authorization': 'KakaoAK $KAKAO_REST_API_KEY'});
+    final url =
+        'https://dapi.kakao.com/v2/local/search/keyword.json?query=${Uri.encodeComponent(query)}';
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {'Authorization': 'KakaoAK $KAKAO_REST_API_KEY'},
+    );
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       final List docs = data['documents'] ?? [];
-      return docs.map((place) => PlaceCandidate(
-        name: place['place_name'] ?? '',
-        address: place['road_address_name'] ?? place['address_name'] ?? '',
-        latitude: double.tryParse(place['y'] ?? '') ?? 0.0,
-        longitude: double.tryParse(place['x'] ?? '') ?? 0.0,
-      )).where((p) => p.latitude != 0.0 && p.longitude != 0.0).toList();
+      return docs
+          .map(
+            (place) => PlaceCandidate(
+              name: place['place_name'] ?? '',
+              address:
+                  place['road_address_name'] ?? place['address_name'] ?? '',
+              latitude: double.tryParse(place['y'] ?? '') ?? 0.0,
+              longitude: double.tryParse(place['x'] ?? '') ?? 0.0,
+            ),
+          )
+          .where((p) => p.latitude != 0.0 && p.longitude != 0.0)
+          .toList();
     } else {
       throw Exception('카카오 장소 검색 실패: ${response.body}');
     }
   }
 
-  void sortCandidatesSmart(List<PlaceCandidate> places, NLatLng current, String keyword) {
+  void sortCandidatesSmart(
+    List<PlaceCandidate> places,
+    NLatLng current,
+    String keyword,
+  ) {
     final exact = places.where((p) => p.name.trim() == keyword.trim()).toList();
-    final others = places.where((p) => p.name.trim() != keyword.trim()).toList();
+    final others =
+        places.where((p) => p.name.trim() != keyword.trim()).toList();
 
-    others.sort((a, b) => calculateDistance(current, a).compareTo(calculateDistance(current, b)));
-    places..clear()..addAll(exact)..addAll(others);
+    others.sort(
+      (a, b) => calculateDistance(
+        current,
+        a,
+      ).compareTo(calculateDistance(current, b)),
+    );
+    places
+      ..clear()
+      ..addAll(exact)
+      ..addAll(others);
   }
 
   double calculateDistance(NLatLng from, PlaceCandidate to) {
     const double R = 6371000;
     final double dLat = (to.latitude - from.latitude) * pi / 180;
     final double dLon = (to.longitude - from.longitude) * pi / 180;
-    final double a = sin(dLat / 2) * sin(dLat / 2) + cos(from.latitude * pi / 180) * cos(to.latitude * pi / 180) * sin(dLon / 2) * sin(dLon / 2);
+    final double a =
+        sin(dLat / 2) * sin(dLat / 2) +
+        cos(from.latitude * pi / 180) *
+            cos(to.latitude * pi / 180) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
     return R * 2 * atan2(sqrt(a), sqrt(1 - a));
   }
 
@@ -193,21 +312,24 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
-      builder: (_) => ListView.builder(
-        itemCount: places.length,
-        itemBuilder: (context, index) {
-          final p = places[index];
-          final distance = formatDistance(calculateDistance(_currentLocation!, p));
-          return ListTile(
-            title: Text('${p.name}'),
-            subtitle: Text('${p.address}\n거리: $distance'),
-            onTap: () {
-              Navigator.pop(context);
-              _startRoutingTo(NLatLng(p.latitude, p.longitude));
+      builder:
+          (_) => ListView.builder(
+            itemCount: places.length,
+            itemBuilder: (context, index) {
+              final p = places[index];
+              final distance = formatDistance(
+                calculateDistance(_currentLocation!, p),
+              );
+              return ListTile(
+                title: Text('${p.name}'),
+                subtitle: Text('${p.address}\n거리: $distance'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _startRoutingTo(NLatLng(p.latitude, p.longitude));
+                },
+              );
             },
-          );
-        },
-      ),
+          ),
     ).whenComplete(() {
       setState(() {
         _navigating = false;
@@ -238,8 +360,15 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     final status = await Permission.location.request();
     if (status.isGranted) {
       try {
-        final position = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
-        setState(() => _currentLocation = NLatLng(position.latitude, position.longitude));
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+          ),
+        );
+        setState(
+          () =>
+              _currentLocation = NLatLng(position.latitude, position.longitude),
+        );
       } catch (e) {
         _speak('위치 정보를 가져오지 못했습니다.');
       }
@@ -252,7 +381,10 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(title: const Text('경로 설정'), backgroundColor: Colors.deepPurple),
+      appBar: AppBar(
+        title: const Text('경로 설정'),
+        backgroundColor: Colors.deepPurple,
+      ),
       body: guideRoutes != null ? _buildRouteList() : _buildModeSelection(),
     );
   }
@@ -263,7 +395,8 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
       itemCount: guideRoutes!.length,
       itemBuilder: (context, index) {
         final route = guideRoutes![index];
-        final summary = route['lines'].isNotEmpty ? route['lines'][0] : '경로 요약 없음';
+        final summary =
+            route['lines'].isNotEmpty ? route['lines'][0] : '경로 요약 없음';
 
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
@@ -274,30 +407,62 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFFD400),
                   padding: const EdgeInsets.all(16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                onPressed: () => setState(() => routeExpanded[index] = !routeExpanded[index]),
+                onPressed:
+                    () => setState(
+                      () => routeExpanded[index] = !routeExpanded[index],
+                    ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('경로 ${index + 1}', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                    Flexible(child: Padding(
-                      padding: const EdgeInsets.only(left: 12),
-                      child: Text(summary, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.black)),
-                    )),
+                    Text(
+                      '경로 ${index + 1}',
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Flexible(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 12),
+                        child: Text(
+                          summary,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.black),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
               if (routeExpanded[index])
                 Column(
                   children: [
-                    ...route['lines'].skip(1).map<Widget>((line) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 12),
-                      child: Align(alignment: Alignment.centerLeft, child: Text(line, style: const TextStyle(color: Colors.white))),
-                    )),
+                    ...route['lines']
+                        .skip(1)
+                        .map<Widget>(
+                          (line) => Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 2,
+                              horizontal: 12,
+                            ),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                line,
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ),
                     const SizedBox(height: 10),
                     ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurple,
+                      ),
                       onPressed: () async {
                         final uid = FirebaseAuth.instance.currentUser?.uid;
                         final routeId = route['route_id'];
@@ -305,7 +470,13 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                           await _speak('실시간 경로 안내를 시작합니다.');
                           final result = await Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => FirestoreStepsScreen(uid: uid, routeId: routeId)),
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => FirestoreStepsScreen(
+                                    uid: uid,
+                                    routeId: routeId,
+                                  ),
+                            ),
                           );
                           if (result == true) {
                             setState(() {
@@ -332,35 +503,76 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   }
 
   Widget _buildModeSelection() {
-    return !isModeSelected ? Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ElevatedButton.icon(
-            onPressed: () {
-              setState(() {
-                isModeSelected = true;
-                isTextMode = false;
-                _speakThen(() => _initializeSpeech(), '목적지를 말씀해주세요.');
-              });
-            },
-            icon: const Icon(Icons.mic),
-            label: const Text('음성으로 목적지 입력하기'),
+    return !isModeSelected
+        ? Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    isModeSelected = true;
+                    isTextMode = false;
+                    _speakThen(() => _initializeSpeech(), '목적지를 말씀해주세요.');
+                  });
+                },
+                icon: const Icon(Icons.mic),
+                label: const Text('음성으로 목적지 입력하기'),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    isModeSelected = true;
+                    isTextMode = true;
+                  });
+                },
+                icon: const Icon(Icons.edit),
+                label: const Text('텍스트로 목적지 입력하기'),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                // 🔹 추가된 저장 버튼
+                onPressed:
+                    () => _saveCurrentLocationAsFrequentPlace(
+                      context,
+                      _currentLocation,
+                    ),
+                icon: const Icon(Icons.add_location),
+                label: const Text('현재 위치를 자주 가는 장소로 저장'),
+              ),
+              if (_frequentPlaces.isNotEmpty) // 🔹 추가 시작
+                Column(
+                  children: [
+                    const Text(
+                      '자주 가는 장소',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      children:
+                          _frequentPlaces
+                              .map(
+                                (place) => ElevatedButton(
+                                  onPressed: () {
+                                    final lat = place['lat'];
+                                    final lng = place['lng'];
+                                    _startRoutingTo(NLatLng(lat, lng));
+                                  },
+                                  child: Text(place['name']),
+                                ),
+                              )
+                              .toList(),
+                    ),
+                  ],
+                ), // 🔹 추가 끝
+            ],
           ),
-          const SizedBox(height: 20),
-          ElevatedButton.icon(
-            onPressed: () {
-              setState(() {
-                isModeSelected = true;
-                isTextMode = true;
-              });
-            },
-            icon: const Icon(Icons.edit),
-            label: const Text('텍스트로 목적지 입력하기'),
-          ),
-        ],
-      ),
-    ) : isTextMode ? _buildTextInputMode() : _buildSpeechPrompt();
+        )
+        : isTextMode
+        ? _buildTextInputMode()
+        : _buildSpeechPrompt();
   }
 
   Widget _buildTextInputMode() {
@@ -409,7 +621,9 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
-            if (_isReadyForDoubleTap && !_isTtsSpeaking && recognizedText.isNotEmpty)
+            if (_isReadyForDoubleTap &&
+                !_isTtsSpeaking &&
+                recognizedText.isNotEmpty)
               ElevatedButton(
                 onPressed: _handleDoubleTap,
                 child: const Text('경로 안내 시작'),
