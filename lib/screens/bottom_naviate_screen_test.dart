@@ -57,9 +57,9 @@ class _MapScreenState extends State<MapScreen> {
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('위치 서비스를 활성화해주세요.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('위치 서비스를 활성화해주세요.')));
       }
       return;
     }
@@ -69,9 +69,9 @@ class _MapScreenState extends State<MapScreen> {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('위치 권한이 필요합니다.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('위치 권한이 필요합니다.')));
         }
         return;
       }
@@ -88,7 +88,8 @@ class _MapScreenState extends State<MapScreen> {
 
     try {
       Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
+        desiredAccuracy: LocationAccuracy.high,
+      );
       setState(() {
         _currentLocation = LatLng(position.latitude, position.longitude);
       });
@@ -103,9 +104,9 @@ class _MapScreenState extends State<MapScreen> {
     } catch (e) {
       print('현재 위치를 불러오는 중 오류 발생: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('현재 위치를 불러오는데 실패했습니다.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('현재 위치를 불러오는데 실패했습니다.')));
       }
     }
   }
@@ -113,9 +114,9 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _searchDestination(String address) async {
     if (address.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('주소를 입력해주세요.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('주소를 입력해주세요.')));
       }
       return;
     }
@@ -126,7 +127,10 @@ class _MapScreenState extends State<MapScreen> {
       if (locations.isNotEmpty) {
         Location firstLocation = locations.first;
         setState(() {
-          _destinationLocation = LatLng(firstLocation.latitude, firstLocation.longitude);
+          _destinationLocation = LatLng(
+            firstLocation.latitude,
+            firstLocation.longitude,
+          );
         });
 
         if (_mapController != null && _destinationLocation != null) {
@@ -138,17 +142,17 @@ class _MapScreenState extends State<MapScreen> {
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('해당 주소를 찾을 수 없습니다.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('해당 주소를 찾을 수 없습니다.')));
         }
       }
     } catch (e) {
       print('주소 검색 중 오류 발생: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('주소 검색에 실패했습니다.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('주소 검색에 실패했습니다.')));
       }
     }
   }
@@ -156,9 +160,7 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Naver Map Test'),
-      ),
+      appBar: AppBar(title: const Text('Naver Map Test')),
       body: Column(
         children: [
           Padding(
@@ -212,13 +214,15 @@ class _MapScreenState extends State<MapScreen> {
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: Text(
-                  '현재 위치: ${_currentLocation!.latitude.toStringAsFixed(6)}, ${_currentLocation!.longitude.toStringAsFixed(6)}'),
+                '현재 위치: ${_currentLocation!.latitude.toStringAsFixed(6)}, ${_currentLocation!.longitude.toStringAsFixed(6)}',
+              ),
             ),
           if (_destinationLocation != null)
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: Text(
-                  '목적지 위치: ${_destinationLocation!.latitude.toStringAsFixed(6)}, ${_destinationLocation!.longitude.toStringAsFixed(6)}'),
+                '목적지 위치: ${_destinationLocation!.latitude.toStringAsFixed(6)}, ${_destinationLocation!.longitude.toStringAsFixed(6)}',
+              ),
             ),
         ],
       ),

@@ -66,7 +66,34 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     _loadFrequentPlaces();
   }
 
-  // 🔹 장소 이름 입력 Dialog
+  // 🔹 장소 검색용 입력창 (자주 가는 장소 등록용)
+  Future<String?> _showPlaceSearchDialog(BuildContext context) async {
+    String query = '';
+    return showDialog<String>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('장소 검색'),
+            content: TextField(
+              autofocus: true,
+              onChanged: (value) => query = value,
+              decoration: const InputDecoration(hintText: '등록할 장소를 검색해주세요'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, query),
+                child: const Text('검색'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  // 🔹 장소 저장용 입력창
   Future<String?> _showNameInputDialog(BuildContext context) async {
     String inputName = '';
     return showDialog<String>(
@@ -93,7 +120,57 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     );
   }
 
-  // 🔹 현재 위치를 Firestore에 저장하는 함수
+  // 🔹 장소 검색 결과 중 선택 후 저장
+  void _showSearchResultsForSaving(List<PlaceCandidate> places) {
+    showModalBottomSheet(
+      context: context,
+      builder:
+          (_) => ListView.builder(
+            itemCount: places.length,
+            itemBuilder: (context, index) {
+              final place = places[index];
+              return ListTile(
+                title: Text(place.name),
+                subtitle: Text(place.address),
+                onTap: () async {
+                  final name = await _showNameInputDialog(context);
+                  if (name == null || name.trim().isEmpty) return;
+
+                  final uid = FirebaseAuth.instance.currentUser?.uid;
+                  if (uid == null) return;
+
+                  final placeData = {
+                    'lat': place.latitude,
+                    'lng': place.longitude,
+                    'added_at': FieldValue.serverTimestamp(),
+                  };
+
+                  await FirebaseFirestore.instance
+                      .collection('frequent_places')
+                      .doc(uid)
+                      .set({name.trim(): placeData}, SetOptions(merge: true));
+
+                  await _loadFrequentPlaces();
+                  Navigator.pop(context);
+                  await _speak('$name 장소를 저장했습니다.');
+                },
+              );
+            },
+          ),
+    );
+  }
+
+  // 🔹 장소 저장 로직 (검색 기반)
+  Future<void> _searchAndSavePlace(String query) async {
+    final places = await searchKakaoPlaces(query);
+    if (places.isEmpty) {
+      await _speak('검색 결과가 없습니다.');
+      return;
+    }
+    _showSearchResultsForSaving(places);
+  }
+
+  // 🔹 현재 위치 저장
   Future<void> _saveCurrentLocationAsFrequentPlace(
     BuildContext context,
     NLatLng? currentLocation,
@@ -122,7 +199,6 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     await TtsManager.speakIfEnabled(_tts, '$name 장소를 저장했습니다.');
   }
 
-  // 🔹 Firestore에서 자주 가는 장소 불러오기
   Future<void> _loadFrequentPlaces() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
@@ -141,6 +217,45 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
             }).toList();
       });
     }
+  }
+
+  // 🔹 UI: 장소 검색 후 자주 가는 장소로 저장 버튼 동작
+  Future<void> _handleSearchAndSaveButtonPressed() async {
+    final query = await _showPlaceSearchDialog(context);
+    if (query != null && query.trim().isNotEmpty) {
+      _searchAndSavePlace(query.trim());
+    }
+  }
+
+  // 🔹 장소 등록 방식 선택 다이얼로그는 State 클래스 내에 위치 (예: _saveCurrentLocationAsFrequentPlace 아래)
+  void _handleUnifiedSaveButtonPressed() {
+    showDialog(
+      context: context,
+      builder:
+          (_) => AlertDialog(
+            title: const Text("장소 등록 방식 선택"),
+            content: const Text("어떤 방식으로 자주 가는 장소를 등록할까요?"),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _saveCurrentLocationAsFrequentPlace(
+                    context,
+                    _currentLocation,
+                  );
+                },
+                child: const Text("📍 현재 위치 저장"),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _handleSearchAndSaveButtonPressed();
+                },
+                child: const Text("🔍 장소 검색 후 저장"),
+              ),
+            ],
+          ),
+    );
   }
 
   void _initializeTTS() {
@@ -532,18 +647,14 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
               ),
               const SizedBox(height: 20),
               ElevatedButton.icon(
-                // 🔹 추가된 저장 버튼
-                onPressed:
-                    () => _saveCurrentLocationAsFrequentPlace(
-                      context,
-                      _currentLocation,
-                    ),
-                icon: const Icon(Icons.add_location),
-                label: const Text('현재 위치를 자주 가는 장소로 저장'),
+                onPressed: _handleUnifiedSaveButtonPressed,
+                icon: const Icon(Icons.add_location_alt),
+                label: const Text('자주 가는 장소 등록'),
               ),
-              if (_frequentPlaces.isNotEmpty) // 🔹 추가 시작
+              if (_frequentPlaces.isNotEmpty)
                 Column(
                   children: [
+                    const SizedBox(height: 30),
                     const Text(
                       '자주 가는 장소',
                       style: TextStyle(color: Colors.white),
@@ -566,7 +677,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                               .toList(),
                     ),
                   ],
-                ), // 🔹 추가 끝
+                ),
             ],
           ),
         )
