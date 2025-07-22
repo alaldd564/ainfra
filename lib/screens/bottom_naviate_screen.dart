@@ -65,7 +65,6 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     _loadFrequentPlaces();
   }
 
-  // ✅ 추가: 화면 종료 시 리소스 해제
   @override
   void dispose() {
     _tts.stop();
@@ -74,12 +73,12 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     super.dispose();
   }
 
+  // 🔹 장소 검색용 입력창 (자주 가는 장소 등록용)
   Future<String?> _showPlaceSearchDialog(BuildContext context) async {
     String query = '';
     return showDialog<String>(
       context: context,
-      builder:
-          (context) => AlertDialog(
+      builder: (context) => AlertDialog(
         title: const Text('장소 검색'),
         content: TextField(
           autofocus: true,
@@ -100,12 +99,12 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     );
   }
 
+  // 🔹 장소 저장용 입력창
   Future<String?> _showNameInputDialog(BuildContext context) async {
     String inputName = '';
     return showDialog<String>(
       context: context,
-      builder:
-          (context) => AlertDialog(
+      builder: (context) => AlertDialog(
         title: const Text('장소 이름 입력'),
         content: TextField(
           autofocus: true,
@@ -125,12 +124,11 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
       ),
     );
   }
-
+  // 🔹 장소 검색 결과 중 선택 후 저장
   void _showSearchResultsForSaving(List<PlaceCandidate> places) {
     showModalBottomSheet(
       context: context,
-      builder:
-          (_) => ListView.builder(
+      builder: (_) => ListView.builder(
         itemCount: places.length,
         itemBuilder: (context, index) {
           final place = places[index];
@@ -164,6 +162,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     );
   }
 
+  // 🔹 장소 저장 로직 (검색 기반)
   Future<void> _searchAndSavePlace(String query) async {
     final places = await searchKakaoPlaces(query);
     if (places.isEmpty) {
@@ -173,6 +172,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     _showSearchResultsForSaving(places);
   }
 
+  // 🔹 현재 위치 저장
   Future<void> _saveCurrentLocationAsFrequentPlace(
       BuildContext context,
       NLatLng? currentLocation,
@@ -201,36 +201,35 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   Future<void> _loadFrequentPlaces() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
-    final doc =
-    await FirebaseFirestore.instance
+    final doc = await FirebaseFirestore.instance
         .collection('frequent_places')
         .doc(uid)
         .get();
     if (doc.exists) {
       final data = doc.data() ?? {};
       setState(() {
-        _frequentPlaces =
-            data.entries.map((e) {
-              final v = e.value;
-              return {'name': e.key, 'lat': v['lat'], 'lng': v['lng']};
-            }).toList();
+        _frequentPlaces = data.entries.map((e) {
+          final v = e.value;
+          return {'name': e.key, 'lat': v['lat'], 'lng': v['lng']};
+        }).toList();
       });
     }
   }
 
+  // 🔸 자주 가는 장소 삭제 함수 추가
   Future<void> _deleteFrequentPlace(String name) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    final docRef = FirebaseFirestore.instance
-        .collection('frequent_places')
-        .doc(uid);
+    final docRef =
+    FirebaseFirestore.instance.collection('frequent_places').doc(uid);
     await docRef.update({name: FieldValue.delete()});
 
     await _loadFrequentPlaces();
     await _speak('$name 장소를 삭제했습니다.');
   }
 
+  // 🔹 UI: 장소 검색 후 자주 가는 장소로 저장 버튼 동작
   Future<void> _handleSearchAndSaveButtonPressed() async {
     final query = await _showPlaceSearchDialog(context);
     if (query != null && query.trim().isNotEmpty) {
@@ -238,11 +237,11 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     }
   }
 
+  // 🔹 장소 등록 방식 선택 다이얼로그는 State 클래스 내에 위치 (예: _saveCurrentLocationAsFrequentPlace 아래)
   void _handleUnifiedSaveButtonPressed() {
     showDialog(
       context: context,
-      builder:
-          (_) => AlertDialog(
+      builder: (_) => AlertDialog(
         title: const Text("장소 등록 방식 선택"),
         content: const Text("어떤 방식으로 자주 가는 장소를 등록할까요?"),
         actions: [
@@ -277,7 +276,6 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
 
   Future<void> _speak(String text) async =>
       await TtsManager.speakIfEnabled(_tts, text);
-
   Future<void> _speakThen(Function callback, String text) async {
     await _speak(text);
     while (_isTtsSpeaking) {
@@ -323,8 +321,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     if (_navigating ||
         !_isReadyForDoubleTap ||
         _isTtsSpeaking ||
-        recognizedText.isEmpty)
-      return;
+        recognizedText.isEmpty) return;
     _navigating = true;
     await _speak('$recognizedText로 경로를 안내합니다.');
 
@@ -412,12 +409,11 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     const double R = 6371000;
     final double dLat = (to.latitude - from.latitude) * pi / 180;
     final double dLon = (to.longitude - from.longitude) * pi / 180;
-    final double a =
-        sin(dLat / 2) * sin(dLat / 2) +
-            cos(from.latitude * pi / 180) *
-                cos(to.latitude * pi / 180) *
-                sin(dLon / 2) *
-                sin(dLon / 2);
+    final double a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(from.latitude * pi / 180) *
+            cos(to.latitude * pi / 180) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
     return R * 2 * atan2(sqrt(a), sqrt(1 - a));
   }
 
@@ -433,8 +429,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
-      builder:
-          (_) => ListView.builder(
+      builder: (_) => ListView.builder(
         itemCount: places.length,
         itemBuilder: (context, index) {
           final p = places[index];
@@ -498,19 +493,42 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     }
   }
 
+  //뒤로가기 추가
+  void _onBackPressed() {
+    if (guideRoutes != null) {
+      setState(() {
+        guideRoutes = null;
+        isModeSelected = false;
+        isTextMode = false;
+        _isReadyForDoubleTap = false;
+        recognizedText = '';
+      });
+      _speak("경로 안내를 취소하고 이전 화면으로 돌아갑니다.");
+    }
+    else {
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      // ✅ 수정: AppBar에 뒤로가기 버튼 명시
-      appBar: AppBar(
-        leading: BackButton(
-          onPressed: () => Navigator.of(context).pop(),
+    return WillPopScope(
+      onWillPop: () async {
+        _onBackPressed();
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: _onBackPressed,
+          ),
+          title: const Text('경로 설정'),
+          backgroundColor: Colors.deepPurple,
         ),
-        title: const Text('경로 설정'),
-        backgroundColor: Colors.deepPurple,
+        body: guideRoutes != null ? _buildRouteList() : _buildModeSelection(),
       ),
-      body: guideRoutes != null ? _buildRouteList() : _buildModeSelection(),
     );
   }
 
@@ -536,8 +554,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                onPressed:
-                    () => setState(
+                onPressed: () => setState(
                       () => routeExpanded[index] = !routeExpanded[index],
                 ),
                 child: Row(
@@ -582,7 +599,8 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                           ),
                         ),
                       ),
-                    ),
+                    )
+                        .toList(),
                     const SizedBox(height: 10),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -596,8 +614,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                           final result = await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder:
-                                  (_) => FirestoreStepsScreen(
+                              builder: (_) => FirestoreStepsScreen(
                                 uid: uid,
                                 routeId: routeId,
                               ),
@@ -638,7 +655,8 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
               setState(() {
                 isModeSelected = true;
                 isTextMode = false;
-                _speakThen(() => _initializeSpeech(), '목적지를 말씀해주세요.');
+                _speakThen(
+                        () => _initializeSpeech(), '목적지를 말씀해주세요.');
               });
             },
             icon: const Icon(Icons.mic),
@@ -673,8 +691,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children:
-                  _frequentPlaces.map((place) {
+                  children: _frequentPlaces.map((place) {
                     final name = place['name'];
                     final lat = place['lat'];
                     final lng = place['lng'];
@@ -700,27 +717,23 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                             ),
                             label: Text(
                               name,
-                              style: const TextStyle(
-                                color: Colors.white,
-                              ),
+                              style:
+                              const TextStyle(color: Colors.white),
                             ),
                           ),
                           IconButton(
                             onPressed: () {
                               showDialog(
                                 context: context,
-                                builder:
-                                    (_) => AlertDialog(
+                                builder: (_) => AlertDialog(
                                   title: Text('$name 삭제'),
                                   content: const Text(
                                     '정말로 이 장소를 삭제하시겠습니까?',
                                   ),
                                   actions: [
                                     TextButton(
-                                      onPressed:
-                                          () => Navigator.pop(
-                                        context,
-                                      ),
+                                      onPressed: () =>
+                                          Navigator.pop(context),
                                       child: const Text('취소'),
                                     ),
                                     TextButton(
@@ -798,7 +811,9 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              recognizedText.isEmpty ? '말씀해주세요...' : '입력된 목적지: $recognizedText',
+              recognizedText.isEmpty
+                  ? '말씀해주세요...'
+                  : '입력된 목적지: $recognizedText',
               style: const TextStyle(color: Colors.white, fontSize: 20),
               textAlign: TextAlign.center,
             ),
