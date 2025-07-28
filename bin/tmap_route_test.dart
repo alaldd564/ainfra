@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'dart:async';
 
-const String tmapApiKey = 'vk8LtDITx13MiOEqJylYL9cVNhmWuLmi3I9rRG76';
+const String tmapApiKey = '';
 
 // 시간 포맷
 String formatSearchTime(DateTime dt) {

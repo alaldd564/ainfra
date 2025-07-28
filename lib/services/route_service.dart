@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-const String tmapApiKey = 'vk8LtDITx13MiOEqJylYL9cVNhmWuLmi3I9rRG76';
+const String tmapApiKey = '';
 
 String formatSearchTime(DateTime dt) {
   return "${dt.year.toString().padLeft(4, '0')}"

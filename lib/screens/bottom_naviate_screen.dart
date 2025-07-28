@@ -375,6 +375,9 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
       headers: {'Authorization': 'KakaoAK $KAKAO_REST_API_KEY'},
     );
 
+    print('📥 응답 상태 코드: ${response.statusCode}');
+    print('📥 응답 본문: ${response.body}');
+
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       final List docs = data['documents'] ?? [];
