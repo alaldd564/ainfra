@@ -25,14 +25,28 @@ double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
   return R * c;
 }
 
-String calculateDirection(List prev, List curr) {
-  final dx = curr[0] - prev[0];
-  final dy = curr[1] - prev[1];
-  final angle = atan2(dy, dx) * 180 / pi;
-  if (angle >= -45 && angle < 45) return '동쪽 방향';
-  if (angle >= 45 && angle < 135) return '북쪽 방향';
-  if (angle >= -135 && angle < -45) return '남쪽 방향';
-  return '서쪽 방향';
+// 🔧 angle을 시계방향으로 설명하는 함수 추가
+String getClockDirectionFromAngle(double angle) {
+  final directions = [
+    "12시 방향", "1시 방향", "2시 방향", "3시 방향", "4시 방향",
+    "5시 방향", "6시 방향", "7시 방향", "8시 방향", "9시 방향",
+    "10시 방향", "11시 방향"
+  ];
+  final index = ((angle + 15) % 360 ~/ 30) % 12;
+  return directions[index];
+}
+
+// 🔧 angle을 상대방향으로 설명하는 함수 추가
+String getRelativeDirection(double angle) {
+  if (angle >= 345 || angle < 15) return "직진";
+  if (angle >= 15 && angle < 75) return "약간 ${getClockDirectionFromAngle(angle)}";
+  if (angle >= 75 && angle < 105) return "우회전";
+  if (angle >= 105 && angle < 165) return "약간 ${getClockDirectionFromAngle(angle)}";
+  if (angle >= 165 && angle < 195) return "뒤로 돌아가기";
+  if (angle >= 195 && angle < 255) return "약간 ${getClockDirectionFromAngle(angle)}";
+  if (angle >= 255 && angle < 285) return "좌회전";
+  if (angle >= 285 && angle < 345) return "약간 ${getClockDirectionFromAngle(angle)}";
+  return "알 수 없는 방향";
 }
 
 Future<void> saveRouteStepsToFirestore(
@@ -100,15 +114,16 @@ Future<List<String>> generateStepByStepGuidanceAndSave(
         final curr = coords[i];
         final dist = calculateDistance(prev[1], prev[0], curr[1], curr[0]);
         if (dist >= 5) {
-          final direction = calculateDirection(prev, curr);
-          final text = "🚶 ${dist.toStringAsFixed(0)}m $direction";
+          final angle = atan2(curr[1] - prev[1], curr[0] - prev[0]) * 180 / pi;
+          final relativeDirection = getRelativeDirection((angle + 360) % 360); // 🔧 추가됨
+          final text = "${relativeDirection}으로 ${dist.toStringAsFixed(0)}m 이동하세요"; // 🔧 변경됨
           guide.add(text);
 
           stepsRecord.add({
             'text': text,
             'lat': curr[1],
             'lng': curr[0],
-            'angle': atan2(curr[1] - prev[1], curr[0] - prev[0]) * 180 / pi,
+            'angle': angle,
             'distance': dist
           });
         }
