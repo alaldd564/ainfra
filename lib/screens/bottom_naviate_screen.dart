@@ -28,6 +28,7 @@ class PlaceCandidate {
   final String address;
   final double latitude;
   final double longitude;
+
   PlaceCandidate({
     required this.name,
     required this.address,
@@ -47,14 +48,12 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   bool _isTtsSpeaking = false;
   bool _isReadyForDoubleTap = false;
   bool _navigating = false;
-
   bool isModeSelected = false;
   bool isTextMode = false;
   final TextEditingController _textController = TextEditingController();
 
   List<Map<String, dynamic>>? guideRoutes;
   List<bool> routeExpanded = [];
-
   List<Map<String, dynamic>> _frequentPlaces = [];
 
   @override
@@ -66,101 +65,105 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     _loadFrequentPlaces();
   }
 
-  // 🔹 장소 검색용 입력창 (자주 가는 장소 등록용)
+  // ✅ 추가: 화면 종료 시 리소스 해제
+  @override
+  void dispose() {
+    _tts.stop();
+    _speech.stop();
+    _textController.dispose();
+    super.dispose();
+  }
+
   Future<String?> _showPlaceSearchDialog(BuildContext context) async {
     String query = '';
     return showDialog<String>(
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('장소 검색'),
-            content: TextField(
-              autofocus: true,
-              onChanged: (value) => query = value,
-              decoration: const InputDecoration(hintText: '등록할 장소를 검색해주세요'),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('취소'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, query),
-                child: const Text('검색'),
-              ),
-            ],
+        title: const Text('장소 검색'),
+        content: TextField(
+          autofocus: true,
+          onChanged: (value) => query = value,
+          decoration: const InputDecoration(hintText: '등록할 장소를 검색해주세요'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
           ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, query),
+            child: const Text('검색'),
+          ),
+        ],
+      ),
     );
   }
 
-  // 🔹 장소 저장용 입력창
   Future<String?> _showNameInputDialog(BuildContext context) async {
     String inputName = '';
     return showDialog<String>(
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('장소 이름 입력'),
-            content: TextField(
-              autofocus: true,
-              onChanged: (value) => inputName = value,
-              decoration: const InputDecoration(hintText: '예: 집, 회사'),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('취소'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, inputName),
-                child: const Text('저장'),
-              ),
-            ],
+        title: const Text('장소 이름 입력'),
+        content: TextField(
+          autofocus: true,
+          onChanged: (value) => inputName = value,
+          decoration: const InputDecoration(hintText: '예: 집, 회사'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
           ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, inputName),
+            child: const Text('저장'),
+          ),
+        ],
+      ),
     );
   }
 
-  // 🔹 장소 검색 결과 중 선택 후 저장
   void _showSearchResultsForSaving(List<PlaceCandidate> places) {
     showModalBottomSheet(
       context: context,
       builder:
           (_) => ListView.builder(
-            itemCount: places.length,
-            itemBuilder: (context, index) {
-              final place = places[index];
-              return ListTile(
-                title: Text(place.name),
-                subtitle: Text(place.address),
-                onTap: () async {
-                  final name = await _showNameInputDialog(context);
-                  if (name == null || name.trim().isEmpty) return;
+        itemCount: places.length,
+        itemBuilder: (context, index) {
+          final place = places[index];
+          return ListTile(
+            title: Text(place.name),
+            subtitle: Text(place.address),
+            onTap: () async {
+              final name = await _showNameInputDialog(context);
+              if (name == null || name.trim().isEmpty) return;
 
-                  final uid = FirebaseAuth.instance.currentUser?.uid;
-                  if (uid == null) return;
+              final uid = FirebaseAuth.instance.currentUser?.uid;
+              if (uid == null) return;
 
-                  final placeData = {
-                    'lat': place.latitude,
-                    'lng': place.longitude,
-                    'added_at': FieldValue.serverTimestamp(),
-                  };
+              final placeData = {
+                'lat': place.latitude,
+                'lng': place.longitude,
+                'added_at': FieldValue.serverTimestamp(),
+              };
 
-                  await FirebaseFirestore.instance
-                      .collection('frequent_places')
-                      .doc(uid)
-                      .set({name.trim(): placeData}, SetOptions(merge: true));
-
-                  await _loadFrequentPlaces();
-                  Navigator.pop(context);
-                  await _speak('$name 장소를 저장했습니다.');
-                },
-              );
+              await FirebaseFirestore.instance
+                  .collection('frequent_places')
+                  .doc(uid)
+                  .set({name.trim(): placeData}, SetOptions(merge: true));
+              await _loadFrequentPlaces();
+              Navigator.pop(context);
+              await _speak('$name 장소를 저장했습니다.');
             },
-          ),
+          );
+        },
+      ),
     );
   }
 
-  // 🔹 장소 저장 로직 (검색 기반)
   Future<void> _searchAndSavePlace(String query) async {
     final places = await searchKakaoPlaces(query);
     if (places.isEmpty) {
@@ -170,11 +173,10 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     _showSearchResultsForSaving(places);
   }
 
-  // 🔹 현재 위치 저장
   Future<void> _saveCurrentLocationAsFrequentPlace(
-    BuildContext context,
-    NLatLng? currentLocation,
-  ) async {
+      BuildContext context,
+      NLatLng? currentLocation,
+      ) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null || currentLocation == null) {
       await TtsManager.speakIfEnabled(_tts, '사용자 정보나 현재 위치가 없습니다.');
@@ -183,18 +185,15 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
 
     final name = await _showNameInputDialog(context);
     if (name == null || name.trim().isEmpty) return;
-
     final placeData = {
       'lat': currentLocation.latitude,
       'lng': currentLocation.longitude,
       'added_at': FieldValue.serverTimestamp(),
     };
-
     await FirebaseFirestore.instance.collection('frequent_places').doc(uid).set(
       {name.trim(): placeData},
       SetOptions(merge: true),
     );
-
     await _loadFrequentPlaces();
     await TtsManager.speakIfEnabled(_tts, '$name 장소를 저장했습니다.');
   }
@@ -203,10 +202,10 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
     final doc =
-        await FirebaseFirestore.instance
-            .collection('frequent_places')
-            .doc(uid)
-            .get();
+    await FirebaseFirestore.instance
+        .collection('frequent_places')
+        .doc(uid)
+        .get();
     if (doc.exists) {
       final data = doc.data() ?? {};
       setState(() {
@@ -219,7 +218,6 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     }
   }
 
-  // 🔸 자주 가는 장소 삭제 함수 추가
   Future<void> _deleteFrequentPlace(String name) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
@@ -233,7 +231,6 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     await _speak('$name 장소를 삭제했습니다.');
   }
 
-  // 🔹 UI: 장소 검색 후 자주 가는 장소로 저장 버튼 동작
   Future<void> _handleSearchAndSaveButtonPressed() async {
     final query = await _showPlaceSearchDialog(context);
     if (query != null && query.trim().isNotEmpty) {
@@ -241,34 +238,33 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     }
   }
 
-  // 🔹 장소 등록 방식 선택 다이얼로그는 State 클래스 내에 위치 (예: _saveCurrentLocationAsFrequentPlace 아래)
   void _handleUnifiedSaveButtonPressed() {
     showDialog(
       context: context,
       builder:
           (_) => AlertDialog(
-            title: const Text("장소 등록 방식 선택"),
-            content: const Text("어떤 방식으로 자주 가는 장소를 등록할까요?"),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _saveCurrentLocationAsFrequentPlace(
-                    context,
-                    _currentLocation,
-                  );
-                },
-                child: const Text("📍 현재 위치 저장"),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _handleSearchAndSaveButtonPressed();
-                },
-                child: const Text("🔍 장소 검색 후 저장"),
-              ),
-            ],
+        title: const Text("장소 등록 방식 선택"),
+        content: const Text("어떤 방식으로 자주 가는 장소를 등록할까요?"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _saveCurrentLocationAsFrequentPlace(
+                context,
+                _currentLocation,
+              );
+            },
+            child: const Text("📍 현재 위치 저장"),
           ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _handleSearchAndSaveButtonPressed();
+            },
+            child: const Text("🔍 장소 검색 후 저장"),
+          ),
+        ],
+      ),
     );
   }
 
@@ -309,7 +305,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
           recognizedText = result.recognizedWords;
           _speech.stop();
           _speakThen(
-            () => setState(() => _isReadyForDoubleTap = true),
+                () => setState(() => _isReadyForDoubleTap = true),
             '$recognizedText이 맞으신가요? 화면을 두 번 터치해주세요.',
           );
         }
@@ -336,7 +332,6 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
       final List<PlaceCandidate> places = await searchKakaoPlaces(
         recognizedText,
       );
-
       if (places.isEmpty) {
         await _speak("목적지 위치를 찾을 수 없습니다. 가게명과 지명을 함께 말씀해 주세요.");
         setState(() {
@@ -351,7 +346,6 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
       }
 
       await _speak('검색된 장소는 총 ${places.length}개입니다.');
-
       if (places.length == 1) {
         _startRoutingTo(NLatLng(places.first.latitude, places.first.longitude));
       } else {
@@ -374,20 +368,19 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
       Uri.parse(url),
       headers: {'Authorization': 'KakaoAK $KAKAO_REST_API_KEY'},
     );
-
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       final List docs = data['documents'] ?? [];
       return docs
           .map(
             (place) => PlaceCandidate(
-              name: place['place_name'] ?? '',
-              address:
-                  place['road_address_name'] ?? place['address_name'] ?? '',
-              latitude: double.tryParse(place['y'] ?? '') ?? 0.0,
-              longitude: double.tryParse(place['x'] ?? '') ?? 0.0,
-            ),
-          )
+          name: place['place_name'] ?? '',
+          address:
+          place['road_address_name'] ?? place['address_name'] ?? '',
+          latitude: double.tryParse(place['y'] ?? '') ?? 0.0,
+          longitude: double.tryParse(place['x'] ?? '') ?? 0.0,
+        ),
+      )
           .where((p) => p.latitude != 0.0 && p.longitude != 0.0)
           .toList();
     } else {
@@ -396,16 +389,15 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   }
 
   void sortCandidatesSmart(
-    List<PlaceCandidate> places,
-    NLatLng current,
-    String keyword,
-  ) {
+      List<PlaceCandidate> places,
+      NLatLng current,
+      String keyword,
+      ) {
     final exact = places.where((p) => p.name.trim() == keyword.trim()).toList();
     final others =
-        places.where((p) => p.name.trim() != keyword.trim()).toList();
-
+    places.where((p) => p.name.trim() != keyword.trim()).toList();
     others.sort(
-      (a, b) => calculateDistance(
+          (a, b) => calculateDistance(
         current,
         a,
       ).compareTo(calculateDistance(current, b)),
@@ -422,10 +414,10 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
     final double dLon = (to.longitude - from.longitude) * pi / 180;
     final double a =
         sin(dLat / 2) * sin(dLat / 2) +
-        cos(from.latitude * pi / 180) *
-            cos(to.latitude * pi / 180) *
-            sin(dLon / 2) *
-            sin(dLon / 2);
+            cos(from.latitude * pi / 180) *
+                cos(to.latitude * pi / 180) *
+                sin(dLon / 2) *
+                sin(dLon / 2);
     return R * 2 * atan2(sqrt(a), sqrt(1 - a));
   }
 
@@ -443,22 +435,22 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
       backgroundColor: Colors.white,
       builder:
           (_) => ListView.builder(
-            itemCount: places.length,
-            itemBuilder: (context, index) {
-              final p = places[index];
-              final distance = formatDistance(
-                calculateDistance(_currentLocation!, p),
-              );
-              return ListTile(
-                title: Text('${p.name}'),
-                subtitle: Text('${p.address}\n거리: $distance'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _startRoutingTo(NLatLng(p.latitude, p.longitude));
-                },
-              );
+        itemCount: places.length,
+        itemBuilder: (context, index) {
+          final p = places[index];
+          final distance = formatDistance(
+            calculateDistance(_currentLocation!, p),
+          );
+          return ListTile(
+            title: Text('${p.name}'),
+            subtitle: Text('${p.address}\n거리: $distance'),
+            onTap: () {
+              Navigator.pop(context);
+              _startRoutingTo(NLatLng(p.latitude, p.longitude));
             },
-          ),
+          );
+        },
+      ),
     ).whenComplete(() {
       setState(() {
         _navigating = false;
@@ -495,8 +487,8 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
           ),
         );
         setState(
-          () =>
-              _currentLocation = NLatLng(position.latitude, position.longitude),
+              () =>
+          _currentLocation = NLatLng(position.latitude, position.longitude),
         );
       } catch (e) {
         _speak('위치 정보를 가져오지 못했습니다.');
@@ -510,7 +502,11 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      // ✅ 수정: AppBar에 뒤로가기 버튼 명시
       appBar: AppBar(
+        leading: BackButton(
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: const Text('경로 설정'),
         backgroundColor: Colors.deepPurple,
       ),
@@ -525,7 +521,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
       itemBuilder: (context, index) {
         final route = guideRoutes![index];
         final summary =
-            route['lines'].isNotEmpty ? route['lines'][0] : '경로 요약 없음';
+        route['lines'].isNotEmpty ? route['lines'][0] : '경로 요약 없음';
 
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
@@ -543,7 +539,7 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                 onPressed:
                     () => setState(
                       () => routeExpanded[index] = !routeExpanded[index],
-                    ),
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -574,19 +570,19 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                         .skip(1)
                         .map<Widget>(
                           (line) => Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 2,
-                              horizontal: 12,
-                            ),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                line,
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                            ),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 2,
+                          horizontal: 12,
+                        ),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            line,
+                            style: const TextStyle(color: Colors.white),
                           ),
                         ),
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -602,9 +598,9 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
                             MaterialPageRoute(
                               builder:
                                   (_) => FirestoreStepsScreen(
-                                    uid: uid,
-                                    routeId: routeId,
-                                  ),
+                                uid: uid,
+                                routeId: routeId,
+                              ),
                             ),
                           );
                           if (result == true) {
@@ -634,128 +630,128 @@ class _BottomNavigateScreenState extends State<BottomNavigateScreen> {
   Widget _buildModeSelection() {
     return !isModeSelected
         ? Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    isModeSelected = true;
-                    isTextMode = false;
-                    _speakThen(() => _initializeSpeech(), '목적지를 말씀해주세요.');
-                  });
-                },
-                icon: const Icon(Icons.mic),
-                label: const Text('음성으로 목적지 입력하기'),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    isModeSelected = true;
-                    isTextMode = true;
-                  });
-                },
-                icon: const Icon(Icons.edit),
-                label: const Text('텍스트로 목적지 입력하기'),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: _handleUnifiedSaveButtonPressed,
-                icon: const Icon(Icons.add_location_alt),
-                label: const Text('자주 가는 장소 등록'),
-              ),
-              if (_frequentPlaces.isNotEmpty)
-                Column(
-                  children: [
-                    const SizedBox(height: 30),
-                    const Text(
-                      '자주 가는 장소',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children:
-                          _frequentPlaces.map((place) {
-                            final name = place['name'];
-                            final lat = place['lat'];
-                            final lng = place['lng'];
-
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.deepPurple.shade400,
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  TextButton.icon(
-                                    onPressed: () {
-                                      _startRoutingTo(NLatLng(lat, lng));
-                                    },
-                                    icon: const Icon(
-                                      Icons.place,
-                                      color: Colors.white,
-                                    ),
-                                    label: Text(
-                                      name,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    onPressed: () {
-                                      showDialog(
-                                        context: context,
-                                        builder:
-                                            (_) => AlertDialog(
-                                              title: Text('$name 삭제'),
-                                              content: const Text(
-                                                '정말로 이 장소를 삭제하시겠습니까?',
-                                              ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed:
-                                                      () => Navigator.pop(
-                                                        context,
-                                                      ),
-                                                  child: const Text('취소'),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () async {
-                                                    Navigator.pop(context);
-                                                    await _deleteFrequentPlace(
-                                                      name,
-                                                    );
-                                                  },
-                                                  child: const Text('삭제'),
-                                                ),
-                                              ],
-                                            ),
-                                      );
-                                    },
-                                    icon: const Icon(
-                                      Icons.delete,
-                                      color: Colors.white,
-                                    ),
-                                    tooltip: '삭제',
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                    ),
-                  ],
-                ),
-            ],
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ElevatedButton.icon(
+            onPressed: () {
+              setState(() {
+                isModeSelected = true;
+                isTextMode = false;
+                _speakThen(() => _initializeSpeech(), '목적지를 말씀해주세요.');
+              });
+            },
+            icon: const Icon(Icons.mic),
+            label: const Text('음성으로 목적지 입력하기'),
           ),
-        )
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: () {
+              setState(() {
+                isModeSelected = true;
+                isTextMode = true;
+              });
+            },
+            icon: const Icon(Icons.edit),
+            label: const Text('텍스트로 목적지 입력하기'),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: _handleUnifiedSaveButtonPressed,
+            icon: const Icon(Icons.add_location_alt),
+            label: const Text('자주 가는 장소 등록'),
+          ),
+          if (_frequentPlaces.isNotEmpty)
+            Column(
+              children: [
+                const SizedBox(height: 30),
+                const Text(
+                  '자주 가는 장소',
+                  style: TextStyle(color: Colors.white),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children:
+                  _frequentPlaces.map((place) {
+                    final name = place['name'];
+                    final lat = place['lat'];
+                    final lng = place['lng'];
+
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.deepPurple.shade400,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextButton.icon(
+                            onPressed: () {
+                              _startRoutingTo(NLatLng(lat, lng));
+                            },
+                            icon: const Icon(
+                              Icons.place,
+                              color: Colors.white,
+                            ),
+                            label: Text(
+                              name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder:
+                                    (_) => AlertDialog(
+                                  title: Text('$name 삭제'),
+                                  content: const Text(
+                                    '정말로 이 장소를 삭제하시겠습니까?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed:
+                                          () => Navigator.pop(
+                                        context,
+                                      ),
+                                      child: const Text('취소'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () async {
+                                        Navigator.pop(context);
+                                        await _deleteFrequentPlace(
+                                          name,
+                                        );
+                                      },
+                                      child: const Text('삭제'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            icon: const Icon(
+                              Icons.delete,
+                              color: Colors.white,
+                            ),
+                            tooltip: '삭제',
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+        ],
+      ),
+    )
         : isTextMode
         ? _buildTextInputMode()
         : _buildSpeechPrompt();

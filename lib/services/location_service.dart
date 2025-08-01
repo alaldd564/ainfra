@@ -1,3 +1,4 @@
+// location_service.dart
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,8 +10,9 @@ class LocationService {
   Timer? _timer;
   double? _lastLat;
   double? _lastLng;
+  DateTime? _lastTimestamp;
 
-  /// 위치 권한 요청 + 주기적으로 위치 전송
+  /// 위치 추적 및 Firebase + 외부 서버 전송 시작
   Future<void> startTrackingAndSend({
     required String userId,
     LocationAccuracy accuracy = LocationAccuracy.best,
@@ -26,7 +28,7 @@ class LocationService {
 
     if (permission == LocationPermission.whileInUse ||
         permission == LocationPermission.always) {
-      // ✅ 시작 시 최초 위치 전송
+      // ✅ 초기 위치 한 번 전송
       try {
         final currentPosition = await Geolocator.getCurrentPosition(
           desiredAccuracy: accuracy,
@@ -47,7 +49,7 @@ class LocationService {
         print("⚠️ 현재 위치 가져오기 실패: $e");
       }
 
-      // ✅ 이후 주기적으로 위치 전송
+      // ✅ 이후 주기적 위치 전송
       _timer = Timer.periodic(interval, (Timer timer) async {
         try {
           final position = await Geolocator.getCurrentPosition(
@@ -74,7 +76,7 @@ class LocationService {
     }
   }
 
-  /// 외부 서버에 위치 POST 요청 보내기
+  /// 서버로 위치 전송
   Future<void> postLocationToServer({
     required String userId,
     required double latitude,
@@ -102,7 +104,7 @@ class LocationService {
     }
   }
 
-  /// Firebase Firestore에 위치 + angle 저장
+  /// Firestore에 위치, angle, 속도 저장
   Future<void> updateFirestoreLocation({
     required String userId,
     required double latitude,
@@ -110,16 +112,27 @@ class LocationService {
   }) async {
     try {
       double? angle;
+      double? speed;
+      final now = DateTime.now();
 
-      if (_lastLat != null && _lastLng != null) {
+      if (_lastLat != null && _lastLng != null && _lastTimestamp != null) {
         final dx = longitude - _lastLng!;
         final dy = latitude - _lastLat!;
         angle = atan2(dy, dx) * 180 / pi;
-        if (angle < 0) angle += 360; // 음수 방지
+        if (angle < 0) angle += 360;
+
+        // 거리 계산 (Haversine)
+        final distance = _calculateDistance(_lastLat!, _lastLng!, latitude, longitude);
+        final timeDiff = now.difference(_lastTimestamp!).inMilliseconds / 1000;
+        if (timeDiff > 0) {
+          speed = distance / timeDiff;
+        }
       }
 
+      // 상태 업데이트
       _lastLat = latitude;
       _lastLng = longitude;
+      _lastTimestamp = now;
 
       await FirebaseFirestore.instance.collection('locations').doc(userId).set({
         'lat': latitude,
@@ -127,17 +140,36 @@ class LocationService {
         'timestamp': Timestamp.now(),
         'location_shared': true,
         if (angle != null) 'angle': angle,
+        if (speed != null) 'speed': speed,
       }, SetOptions(merge: true));
 
-      print('✅ Firebase에 위치 + angle 저장 완료: ${angle?.toStringAsFixed(2)}°');
+      print('✅ Firebase 저장 완료: ${angle?.toStringAsFixed(1)}°, 속도: ${speed?.toStringAsFixed(2)} m/s');
     } catch (e) {
       print('❌ Firebase 저장 실패: $e');
     }
   }
 
-  /// 추적 중지
+  /// 위치 추적 중단
   void stopTracking() {
     _timer?.cancel();
     print('🛑 위치 추적 중지됨');
+  }
+
+  /// Haversine 거리 계산 함수 (meter)
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const R = 6371000;
+    final dLat = _toRadians(lat2 - lat1);
+    final dLon = _toRadians(lon2 - lon1);
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_toRadians(lat1)) *
+            cos(_toRadians(lat2)) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * c;
+  }
+
+  double _toRadians(double degree) {
+    return degree * pi / 180;
   }
 }
