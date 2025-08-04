@@ -3,7 +3,9 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-const String openAIApiKey = ''; // 🔐 여기에 실제 API 키 입력
+const String openAIApiKey = ''; // 🔐 실제 배포 시 주의!
+
+bool hasArrived = false; // ✅ 목적지 도착 여부 상태 전역 변수
 
 /// 시계방향 텍스트 변환
 String _getClockDirectionFromAngle(double angle) {
@@ -124,6 +126,8 @@ Future<String> getNextGuideSentence({
   required double lng,
   required int currentStepIndex,
 }) async {
+  if (hasArrived) return '✅ 이미 목적지에 도착하여 안내가 종료되었습니다.';
+
   try {
     final doc = await FirebaseFirestore.instance
         .collection('routes')
@@ -155,6 +159,18 @@ Future<String> getNextGuideSentence({
       if (dist < minDist) {
         minDist = dist;
         bestIndex = currentStepIndex + i;
+      }
+    }
+
+    final lastStep = steps.last;
+    final lastStepDist = _distance(lat, lng, lastStep['lat'], lastStep['lng']);
+
+    if (lastStepDist <= 10) {
+      hasArrived = true;
+      if (lastStepDist > 3) {
+        return '곧 목적지에 도착합니다.';
+      } else {
+        return '목적지에 도착하였습니다. 안내를 종료합니다. [DONE]';
       }
     }
 

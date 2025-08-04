@@ -133,6 +133,12 @@ class _FirestoreStepsScreenState extends State<FirestoreStepsScreen> {
         lng: currentLng,
         currentStepIndex: index,
       );
+
+      if (newSentence.contains('[DONE]')) {
+        _llmTimer?.cancel();
+        if (mounted) Navigator.pop(context, true);
+        return;
+      }
     } catch (e) {
       print('🔥 LLM 업데이트 실패: $e');
     }
@@ -250,7 +256,13 @@ class RouteMapScreen extends StatefulWidget {
   final double initialLng;
   final String uid;
 
-  const RouteMapScreen({super.key, required this.steps, required this.initialLat, required this.initialLng, required this.uid});
+  const RouteMapScreen({
+    super.key,
+    required this.steps,
+    required this.initialLat,
+    required this.initialLng,
+    required this.uid,
+  });
 
   @override
   State<RouteMapScreen> createState() => _RouteMapScreenState();
@@ -294,11 +306,12 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
     for (int i = 0; i < widget.steps.length; i++) {
       final step = widget.steps[i];
       if (step['lat'] == null || step['lng'] == null) continue;
+
       final marker = NMarker(
         id: 'marker_$i',
         position: NLatLng(step['lat'], step['lng']),
         caption: NOverlayCaption(
-          text: '[$i] ${step['text'] ?? ''}',
+          text: '[${i}] ${step['text'] ?? ''}',
           textSize: 14,
           color: Colors.blue,
         ),
@@ -335,14 +348,15 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
 
       final lat = data['lat'];
       final lng = data['lng'];
+      final newPosition = NLatLng(lat, lng);
 
       if (_currentLocationMarker != null) {
-        _mapController.deleteOverlay(_currentLocationMarker!);
+        await _mapController.deleteOverlay(_currentLocationMarker!.info);
       }
 
       _currentLocationMarker = NMarker(
         id: 'current_location',
-        position: NLatLng(lat, lng),
+        position: newPosition,
         caption: const NOverlayCaption(
           text: '📍 현재 위치',
           textSize: 14,
@@ -350,7 +364,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
         ),
       );
 
-      _mapController.addOverlay(_currentLocationMarker!);
+      await _mapController.addOverlay(_currentLocationMarker!);
     });
   }
 }

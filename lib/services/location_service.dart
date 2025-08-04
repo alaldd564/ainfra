@@ -1,4 +1,3 @@
-// location_service.dart
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,7 +6,7 @@ import 'dart:async';
 import 'dart:math';
 
 class LocationService {
-  Timer? _timer;
+  bool _isTracking = false;
   double? _lastLat;
   double? _lastLng;
   DateTime? _lastTimestamp;
@@ -16,7 +15,7 @@ class LocationService {
   Future<void> startTrackingAndSend({
     required String userId,
     LocationAccuracy accuracy = LocationAccuracy.best,
-    Duration interval = const Duration(seconds: 3),
+    Duration interval = const Duration(seconds: 5),
     String serverUrl = "https://tmap-backend.onrender.com/update_location",
   }) async {
     LocationPermission permission = await Geolocator.checkPermission();
@@ -28,6 +27,8 @@ class LocationService {
 
     if (permission == LocationPermission.whileInUse ||
         permission == LocationPermission.always) {
+      _isTracking = true;
+
       // ✅ 초기 위치 한 번 전송
       try {
         final currentPosition = await Geolocator.getCurrentPosition(
@@ -49,30 +50,50 @@ class LocationService {
         print("⚠️ 현재 위치 가져오기 실패: $e");
       }
 
-      // ✅ 이후 주기적 위치 전송
-      _timer = Timer.periodic(interval, (Timer timer) async {
-        try {
-          final position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: accuracy,
-          );
-          print('🕒 ${DateTime.now()} - 위치 전송: ${position.latitude}, ${position.longitude}');
-          await postLocationToServer(
-            userId: userId,
-            latitude: position.latitude,
-            longitude: position.longitude,
-            serverUrl: serverUrl,
-          );
-          await updateFirestoreLocation(
-            userId: userId,
-            latitude: position.latitude,
-            longitude: position.longitude,
-          );
-        } catch (e) {
-          print("⚠️ 위치 가져오기 실패: $e");
-        }
-      });
+      // ✅ 이후 루프 기반 주기적 위치 전송
+      _startLoop(
+        userId: userId,
+        accuracy: accuracy,
+        interval: interval,
+        serverUrl: serverUrl,
+      );
     } else {
       print("❌ 위치 권한 거부됨");
+    }
+  }
+
+  /// 루프 기반 위치 전송
+  Future<void> _startLoop({
+    required String userId,
+    required LocationAccuracy accuracy,
+    required Duration interval,
+    required String serverUrl,
+  }) async {
+    while (_isTracking) {
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: accuracy,
+        );
+
+        print('🕒 ${DateTime.now()} - 위치 전송: ${position.latitude}, ${position.longitude}');
+
+        await postLocationToServer(
+          userId: userId,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          serverUrl: serverUrl,
+        );
+
+        await updateFirestoreLocation(
+          userId: userId,
+          latitude: position.latitude,
+          longitude: position.longitude,
+        );
+      } catch (e) {
+        print("⚠️ 위치 가져오기 실패: $e");
+      }
+
+      await Future.delayed(interval);
     }
   }
 
@@ -151,7 +172,7 @@ class LocationService {
 
   /// 위치 추적 중단
   void stopTracking() {
-    _timer?.cancel();
+    _isTracking = false;
     print('🛑 위치 추적 중지됨');
   }
 
